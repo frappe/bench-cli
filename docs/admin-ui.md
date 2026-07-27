@@ -54,3 +54,5 @@ Post-save changes such as restarts, firewall sync, WAF sync, or S3 credential sy
 ## Local Work
 
 Use the repo scripts and package metadata for exact frontend commands. After API shape changes, update the API client and run the relevant frontend checks.
+
+Dev builds install dependencies with `npm ci` whenever `package-lock.json` is present, so the lockfile is never rewritten by a build and the working tree stays clean. `npm ci` requires `package.json` and `package-lock.json` to agree: after editing dependencies, run `npm install` yourself and commit the updated lockfile, otherwise the next build fails. Frontends without a lockfile still fall back to `npm install`.
