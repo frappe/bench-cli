@@ -42,8 +42,9 @@ def _build_frontend(frontend: Path, label: str, on_progress: Callable[[str], Non
 
     on_progress(f"Building {label} frontend at {frontend}...")
     if _is_npm_install_stale(frontend):
-        on_progress(f"Running npm install for {label}...")
-        run_command(["npm", "install"], cwd=frontend, stream_output=True)
+        install = ["npm", "ci"] if (frontend / "package-lock.json").exists() else ["npm", "install"]
+        on_progress(f"Running {' '.join(install)} for {label}...")
+        run_command(install, cwd=frontend, stream_output=True)
     on_progress(f"Running npm run build for {label}")
     run_command(["npm", "run", "build"], cwd=frontend, stream_output=True)
 

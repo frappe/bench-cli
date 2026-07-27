@@ -58,12 +58,10 @@ htmlcov/
 *~
 
 # Admin
-admin/frontend/dashboard/node_modules/
-admin/frontend/editor/node_modules/
+admin/frontend/**/node_modules/
 admin/backend/static/dashboard/
 admin/backend/static/editor/
-admin/frontend/dashboard/components.d.ts
-admin/frontend/editor/components.d.ts
+admin/frontend/**/components.d.ts
 *.timestamp-*
 .env
 .env.local
