@@ -1127,7 +1127,7 @@ def test_a_wrong_password_is_rejected_before_the_code_is_considered(tmp_path: Pa
 
 
 def test_login_link_bypasses_the_second_factor(tmp_path: Path) -> None:
-    """`pilot generate-session` runs on the server, so its holder already had shell access."""
+    """`bench admin generate-session` runs on the server, so its holder already had shell access."""
     client = _client(tmp_path)
     client.set_cookie("sid", _session_token())
     _enroll_device(client)

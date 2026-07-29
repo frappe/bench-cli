@@ -68,6 +68,7 @@ These commands control the task worker, not individual Frappe workers.
 - `bench admin upgrade`: update bench-cli to the latest version, run pending upgrade patches (pre_update before, post_update after), and restart the admin service.
 - `bench admin enroll`: exchange the bootstrap token for this bench's Central credential.
 - `bench admin set-central-config`: store Central endpoint and Pilot auth token.
+- `bench admin generate-session`: mint a 5-minute one-time `?sid=` sign-in token, or the full sign-in URL with `--full-path`.
 - `bench admin issue-site-token`: issue a scoped site-to-bench API token.
 - `bench admin run-patches [--phase pre_update|post_update|all]`: run pending bench-cli upgrade patches by hand (see [Configuration](configuration.md#common-config)); `bench admin upgrade` already runs both phases automatically.
 

@@ -123,7 +123,7 @@ export const router = createRouter({
 
 router.beforeEach(async (to) => {
   // A `?sid=<token>` on the URL is a one-time sign-in link (see
-  // `pilot generate-session`). Exchange it for a real session cookie and
+  // `bench admin generate-session`). Exchange it for a real session cookie and
   // re-navigate to the same place with the token stripped, instead of
   // dragging it along into a /login redirect. Errors (expired/already-used
   // link) are swallowed - the next pass through this guard will see no

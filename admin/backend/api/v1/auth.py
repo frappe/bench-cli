@@ -95,7 +95,7 @@ def create_session():
     if error is not None:
         return error
 
-    # A sign-in link is minted on the server by `pilot generate-session`, so whoever holds
+    # A sign-in link is minted on the server by `bench admin generate-session`, so whoever holds
     # one already had shell access. Requiring a device there would only lock out recovery.
     if not redeemed_jti and (blocked := _second_factor_error(bench, str(data.get("otp", "")))):
         return blocked
