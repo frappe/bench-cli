@@ -53,7 +53,7 @@ function isActive(to) {
           :icon="item.icon"
           :to="item.to"
           :active="isActive(item.to)"
-          class="mb-0.5"
+          class="mb-0.5 text-sm"
         >
           {{ item.label }}
 
