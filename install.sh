@@ -514,6 +514,16 @@ require_linger() {
 fetch_pilot() {
     if [ -n "$DEV_MODE" ]; then
         if [ -d "$PILOT_DIR/.git" ]; then
+            current_url="$(git -C "$PILOT_DIR" remote get-url origin 2>/dev/null || true)"
+            current_branch="$(git -C "$PILOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+            if [ "$current_url" != "$REPO_URL" ] || [ "$current_branch" != "$BRANCH_NAME" ]; then
+                echo "$PILOT_DIR already tracks $current_url ($current_branch), not $REPO_URL ($BRANCH_NAME)." >&2
+                echo "Remove it and re-run to switch forks or branches (a --dev checkout may hold" >&2
+                echo "local edits, so this is not done automatically):" >&2
+                echo "" >&2
+                echo "   rm -rf $PILOT_DIR" >&2
+                exit 1
+            fi
             echo "Updating pilot (dev)..."
             git -C "$PILOT_DIR" pull
         else
