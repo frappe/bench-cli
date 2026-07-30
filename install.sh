@@ -9,12 +9,12 @@ set -e
 # As that user it installs bench itself, needing no privileges at all.
 
 # ── configuration ─────────────────────────────────────────────────────────────
-# All three point at the same GitHub repo; override PILOT_GITHUB_SLUG to install
-# from a fork (releases + self-reference URL follow it).
+# All three point at the same GitHub repo/branch; override PILOT_GITHUB_SLUG and
+# PILOT_BRANCH to install from a fork (releases + self-reference URL follow both).
 GITHUB_SLUG="${PILOT_GITHUB_SLUG:-frappe/pilot}"
-INSTALL_URL="https://raw.githubusercontent.com/$GITHUB_SLUG/develop/install.sh"
 REPO_URL="${PILOT_REPO_URL:-https://github.com/$GITHUB_SLUG}"
 BRANCH_NAME="${PILOT_BRANCH:-develop}"
+INSTALL_URL="https://raw.githubusercontent.com/$GITHUB_SLUG/$BRANCH_NAME/install.sh"
 PILOT_DIR="$HOME/pilot"
 BENCH_USER="${BENCH_USER:-frappe}"
 # Lets an unattended run answer sudo, which `curl | sh` cannot prompt for.
@@ -71,6 +71,18 @@ DISTRO="$(detect_distro)"
 
 is_root() {
     [ "$(id -u)" -eq 0 ]
+}
+
+# `su -` and a fresh sudo session both start a clean environment, so a fork or
+# branch override given to this invocation would otherwise be lost across the
+# root -> bench-user handoff. Only print vars that differ from the defaults,
+# so the common case still shows a plain, copy-pasteable command.
+non_default_env() {
+    out=""
+    [ "$GITHUB_SLUG" = "frappe/pilot" ] || out="$out PILOT_GITHUB_SLUG=$GITHUB_SLUG"
+    [ "$BRANCH_NAME" = "develop" ] || out="$out PILOT_BRANCH=$BRANCH_NAME"
+    [ -z "$DEV_MODE" ] || out="$out PILOT_DEV=1"
+    printf '%s' "$out"
 }
 
 # Piping this script through `curl | sh` leaves stdin occupied, so sudo's own
@@ -275,7 +287,7 @@ install_system_packages() {
             echo "sudo is not installed and you are not root, so base packages cannot"
             echo "be installed. Re-run this installer as root first, then as the bench user:"
             echo ""
-            echo "   wget -qO- $INSTALL_URL | sh   # as root"
+            echo "   wget -qO- $INSTALL_URL |$(non_default_env) sh   # as root"
             exit 1
         fi
     fi
@@ -474,7 +486,7 @@ prepare_host() {
     echo " the installer again:"
     echo ""
     echo "   su - $BENCH_USER"
-    echo "   curl -fsSL $INSTALL_URL | bash"
+    echo "   curl -fsSL $INSTALL_URL |$(non_default_env) bash"
     echo "========================================================================"
 }
 
