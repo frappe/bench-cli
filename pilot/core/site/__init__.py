@@ -228,10 +228,10 @@ class Site:
 
         return update_public_config(self.path, patch)
 
-    def admin_login_url(self, proxy_tls: bool = False) -> str | None:
+    def admin_login_url(self, proxy_tls: bool = False, login_as: str = "Administrator") -> str | None:
         from pilot.core.site.login import SiteLogin
 
-        return SiteLogin(self).admin_url(proxy_tls=proxy_tls)
+        return SiteLogin(self).admin_url(proxy_tls=proxy_tls, login_as=login_as)
 
     def _build_missing_assets(self) -> None:
         from pilot.core.site.provisioning import SiteProvisioner

@@ -213,6 +213,8 @@ class Session:
 
     @staticmethod
     def has_scope(claims: dict | None, site: str) -> bool:
+        """Scopes are an allowlist: a bench token opens any site, a site token only its own.
+        A future constrained session must use a NEW scope so today's benches fail it closed here."""
         if not claims:
             return False
         scope = claims.get("scope")
