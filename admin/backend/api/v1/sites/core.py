@@ -227,25 +227,27 @@ def migrate_site(name: str):
 @rate_limit(10, 60, user_ip=True)
 def create_login_link(name: str):
     bench_root = Path(current_app.config["BENCH_ROOT"])
-    if site_config_path(bench_root, name) is None:
+    config_path = site_config_path(bench_root, name)
+    if config_path is None:
         return site_not_found()
-    url, error = _site_login_url(bench_root, name)
-    if error:
-        return error
-    return _no_store(created_response({"url": url}, url))
-
-
-def _site_login_url(bench_root: Path, name: str):
-    """Return (url, None) or (None, error_response) for the site's one-click admin login."""
     try:
         bench = Bench(bench_root)
         proxy_tls = current_app.config["SESSION_COOKIE_SECURE"] and not bench.config.admin.tls
         url = bench.site(name).admin_login_url(proxy_tls=proxy_tls)
     except Exception:
-        return None, error_response("configuration_unavailable", "Site login is unavailable.", 503)
+        return error_response(
+            "configuration_unavailable",
+            "Site login configuration is unavailable.",
+            503,
+        )
     if not url:
-        return None, error_response("site_login_unavailable", "Could not create a site login session.", 503)
-    return url, None
+        return error_response(
+            "site_login_unavailable",
+            "Could not create a site login session.",
+            503,
+        )
+
+    return _no_store(created_response({"url": url}, url))
 
 
 def _site_resource(site: SiteInfo) -> dict:

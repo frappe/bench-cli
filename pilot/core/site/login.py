@@ -16,16 +16,15 @@ class SiteLogin:
     def __init__(self, site: "Site") -> None:
         self.site = site
 
-    def admin_url(self, proxy_tls: bool = False, login_as: str = "Administrator") -> str | None:
+    def admin_url(self, proxy_tls: bool = False) -> str | None:
         site_config = read_site_config(self.site.path)
-        sid = self.create_session(login_as)
+        sid = self.create_session()
         if not sid:
             return None
         redirect_url = self.redirect_url(site_config, proxy_tls)
         return f"{redirect_url}{'&' if '?' in redirect_url else '?'}sid={sid}"
 
-    def create_session(self, login_as: str = "Administrator") -> str | None:
-        # login_as rides argv, never the source string, so a username can't inject code.
+    def create_session(self) -> str | None:
         program = (
             "import sys, frappe\n"
             "from frappe.auth import CookieManager, LoginManager\n"
@@ -34,12 +33,12 @@ class SiteLogin:
             "frappe.utils.set_request(path='/')\n"
             "frappe.local.cookie_manager = CookieManager()\n"
             "frappe.local.login_manager = LoginManager()\n"
-            "frappe.local.login_manager.login_as(sys.argv[2])\n"
+            "frappe.local.login_manager.login_as('Administrator')\n"
             "frappe.db.commit()\n"
             "sys.stdout.write(frappe.session.sid)\n"
         )
         result = subprocess.run(
-            [str(self.site.bench.python), "-c", program, self.site.config.name, login_as],
+            [str(self.site.bench.python), "-c", program, self.site.config.name],
             capture_output=True,
             text=True,
             timeout=30,

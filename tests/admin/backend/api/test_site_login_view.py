@@ -37,7 +37,7 @@ def test_create_login_link_returns_url_with_sid(tmp_path: Path) -> None:
     assert response.headers["Location"] == body["url"]
     assert response.headers["Cache-Control"] == "no-store"
     assert body["url"] == "http://s.localhost:8000/desk?sid=frappe-session-id"
-    create_session.assert_called_once_with("Administrator")
+    create_session.assert_called_once_with()
 
 
 def test_create_login_link_fails_when_session_creation_fails(tmp_path: Path) -> None:
