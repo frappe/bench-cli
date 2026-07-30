@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 from pathlib import Path
 
-from flask import current_app, jsonify, redirect, request, url_for
+from flask import current_app, jsonify, request, url_for
 
 from admin.backend.api.responses import (
     accepted_response,
@@ -24,8 +24,7 @@ from admin.backend.api.v1.sites.shared import (
     task_failure,
     text_fields,
 )
-from admin.backend.internal.session import Session
-from admin.backend.middleware import allow_unauthenticated, client_ip, rate_limit, require_scope
+from admin.backend.middleware import rate_limit, require_scope
 from admin.backend.providers.apps import AppProvider
 from admin.backend.providers.sites import SiteInfo, SiteProvider
 from pilot.core.bench import Bench
@@ -236,42 +235,10 @@ def create_login_link(name: str):
     return _no_store(created_response({"url": url}, url))
 
 
-@sites_bp.get("/<name>/login")
-@allow_unauthenticated
-@rate_limit(10, 60, user_ip=True)
-def open_site_login(name: str):
-    """Exchange a Central site assertion for a fresh Frappe session and redirect in."""
-    bench_root = Path(current_app.config["BENCH_ROOT"])
-    if site_config_path(bench_root, name) is None:
-        return site_not_found()
-    try:
-        bench = Bench(bench_root)
-    except Exception:
-        return error_response("configuration_unavailable", "Site login is unavailable.", 503)
-    denied = _authorize_site_assertion(request.args.get("sid", ""), name, bench)
-    if denied:
-        return denied
-    url, error = _site_login_url(bench_root, name, bench)
-    if error:
-        return error
-    return _no_store(redirect(url, code=302))
-
-
-def _authorize_site_assertion(sid: str, name: str, bench) -> object | None:
-    """Fail closed unless the assertion is JWKS-verified, single-use, and scopes this site."""
-    claims = Session(bench).verify_token(sid, client_ip())
-    jti = claims.get("jti") if claims else None
-    exp = claims.get("exp") if claims else None
-    used_logins = current_app.extensions["used_logins"]
-    if not claims or not jti or not exp or not Session.has_scope(claims, name) or not used_logins.use(jti, exp):
-        return error_response("invalid_login_token", "Invalid or expired sign-in link.", 401)
-    return None
-
-
-def _site_login_url(bench_root: Path, name: str, bench=None):
+def _site_login_url(bench_root: Path, name: str):
     """Return (url, None) or (None, error_response) for the site's one-click admin login."""
     try:
-        bench = bench or Bench(bench_root)
+        bench = Bench(bench_root)
         proxy_tls = current_app.config["SESSION_COOKIE_SECURE"] and not bench.config.admin.tls
         url = bench.site(name).admin_login_url(proxy_tls=proxy_tls)
     except Exception:
