@@ -37,11 +37,6 @@ Admin auth code lives under the admin backend, not in route files. Routes should
 
 Supported auth modes include local Admin sessions and trusted remote JWKS tokens when configured in `[admin]`.
 
-`POST sites/<name>/login` mints a fresh Frappe session and returns `{url: .../desk?sid=...}`.
-Central drives it as the site-login relay: it sends a `scope=site` assertion as the `Bearer`
-token (verified via JWKS, audience, and site-match), then redirects the user to the returned URL.
-It fails closed on any scope it does not understand.
-
 ## Response Shape
 
 Prefer small response models that match UI needs. Include stable ids, names, status, and task ids. Avoid returning raw config objects when only a few fields are needed.
