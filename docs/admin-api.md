@@ -37,6 +37,10 @@ Admin auth code lives under the admin backend, not in route files. Routes should
 
 Supported auth modes include local Admin sessions and trusted remote JWKS tokens when configured in `[admin]`.
 
+`GET sites/<name>/login?sid=<assertion>` is the browser site-login handoff: it verifies a
+Central-minted `scope=site` assertion (JWKS, audience, site-match, single-use), creates a local
+Frappe session, and 302s into the site desk. It fails closed on any scope it does not understand.
+
 ## Response Shape
 
 Prefer small response models that match UI needs. Include stable ids, names, status, and task ids. Avoid returning raw config objects when only a few fields are needed.
