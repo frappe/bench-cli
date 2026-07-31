@@ -38,12 +38,13 @@ class DatabaseDiagnosticsProvider:
         if self._db is None:
             return {"engine": self._engine, "supported": False, "reason": NO_DATABASE_SERVER}
         database = self._require_server()
+        binlog = self._optional(database.get_binlog_status)
         return {
             "engine": self._engine,
             "supported": True,
             "active_connections": self._call(database.get_active_connections),
             "lock_waits": asdict(self._call(database.get_lock_waits)),
-            "binlog": asdict(self._call(database.get_binlog_status)),
+            "binlog": asdict(binlog) if binlog is not None else None,
         }
 
     def get_process_list(self, site: str = "") -> list[dict]:
@@ -106,3 +107,13 @@ class DatabaseDiagnosticsProvider:
             return fn(*args)
         except NotImplementedError as exc:
             raise DatabaseError(NOT_SUPPORTED) from exc
+
+    @staticmethod
+    def _optional(fn, *args):
+        """None for a section this engine has no concept of, so one missing
+        section does not fail the whole payload. Only for reads the UI can
+        omit; a directly requested operation still fails through _call."""
+        try:
+            return fn(*args)
+        except NotImplementedError:
+            return None

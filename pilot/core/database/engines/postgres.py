@@ -43,14 +43,17 @@ class PostgreSQL(Database):
             import psycopg2
         except ImportError as exc:
             raise DatabaseError("psycopg2 is not installed. Run: pip install psycopg2-binary") from exc
-        return psycopg2.connect(
-            host=self._host,
-            port=self._port,
-            user=self._user,
-            password=self._password,
-            dbname=self._database,
-            connect_timeout=self._connect_timeout,
-        )
+        try:
+            return psycopg2.connect(
+                host=self._host,
+                port=self._port,
+                user=self._user,
+                password=self._password,
+                dbname=self._database,
+                connect_timeout=self._connect_timeout,
+            )
+        except psycopg2.Error as exc:
+            raise DatabaseError(f"Could not connect to PostgreSQL at {self._host}:{self._port}: {exc}") from exc
 
     def execute(self, query: str, read_only: bool = True) -> QueryResult:
         conn = self._connect()

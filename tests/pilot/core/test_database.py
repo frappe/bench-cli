@@ -211,6 +211,24 @@ def test_mariadb_get_schema_uses_one_connection() -> None:
     assert [c["name"] for c in by_name["beta"]] == ["id"]
 
 
+def test_postgres_connect_failure_surfaces_as_a_database_error() -> None:
+    """A raw driver error escaped _connect and reached the API as an opaque 500,
+    hiding why diagnostics failed."""
+    import sys
+    import types
+
+    fake_psycopg2 = types.ModuleType("psycopg2")
+    fake_psycopg2.Error = type("Error", (Exception,), {})
+    fake_psycopg2.connect = MagicMock(side_effect=fake_psycopg2.Error("connection refused"))
+
+    db = PostgreSQL(host="db.internal", port=5432, user="u", password="p", database="d")
+    with (
+        patch.dict(sys.modules, {"psycopg2": fake_psycopg2}),
+        pytest.raises(DatabaseError, match=r"Could not connect to PostgreSQL at db\.internal:5432"),
+    ):
+        db.get_active_connections()
+
+
 def test_postgres_get_schema_uses_one_connection() -> None:
     db = PostgreSQL(host="h", port=5432, user="u", password="p", database="d")
     fake_cursor = MagicMock()
