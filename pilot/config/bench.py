@@ -132,9 +132,9 @@ class BenchConfig:
     @classmethod
     def from_file(cls, path: Path) -> "BenchConfig":
         """Read a bench.toml at an arbitrary path. Host-shared fields only
-        merge in correctly when `path` sits at the real `<benches_root>/
-        <bench>/bench.toml` depth (see `_benches_root`) - a standalone file
-        elsewhere merges with an empty CommonConfig instead."""
+        merge in from common_config.toml when `path` sits at the real
+        `<benches_root>/<bench>/bench.toml` depth (see `_benches_root`); a
+        standalone file falls back to the tables it carries itself."""
         with path.open("rb") as fh:
             data = tomllib.load(fh)
         config = cls._from_dict(data, common=cls._read_common(path))
@@ -176,8 +176,11 @@ class BenchConfig:
 
     @classmethod
     def _from_dict(cls, data: dict, *, common: CommonConfig | None = None, strict: bool = False) -> "BenchConfig":
+        """Without a common_config.toml to merge, the shared tables come from
+        this bench.toml itself - a pre-migration file still carries them, and
+        its real values must win over the dataclass defaults."""
         cls._report_unknown_fields(data, strict=strict)
-        common = common or CommonConfig()
+        common = common or CommonConfig.from_raw_dict(data)
         bench_data = data.get("bench", {})
         apps = [
             AppConfig(
@@ -331,9 +334,13 @@ class BenchConfig:
 
     @classmethod
     def _read_common(cls, bench_root: Path | None) -> CommonConfig | None:
-        """The host-shared config this bench merges with, or None if bench_root
-        is unknown (only _validate_serialized calls it without one)."""
-        return CommonConfig.read(cls._benches_root(bench_root)) if bench_root else None
+        """The host-shared config this bench merges with, or None when there is
+        no such file - an unknown bench_root (only _validate_serialized calls it
+        without one), or a host that has not been migrated to it yet."""
+        if bench_root is None:
+            return None
+        benches_root = cls._benches_root(bench_root)
+        return CommonConfig.read(benches_root) if CommonConfig.path(benches_root).exists() else None
 
     @classmethod
     def exists(cls, bench_root: Path) -> bool:

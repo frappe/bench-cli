@@ -144,4 +144,4 @@ jwks_audience = "bench-fleet"
 
 The host-wide system/DB/slow-query monitor log paths (`system_log_path`/`db_log_path`/`slow_query_log_path`) are not configurable at all, in `bench.toml` or `common_config.toml` - they're fixed at `cli_root()/system/logs/{system-stats.log,db-stats.log,slow-queries.json}` (see `pilot/config/monitor.py`).
 
-A pre-upgrade bench whose `bench.toml` still carries these fields directly is migrated by the `merge_common_config` patch - see [pilot/patches](../pilot/patches) and `pilot admin run-patches`.
+A pre-upgrade bench whose `bench.toml` still carries these fields directly is migrated by the `merge_common_config` patch - see [pilot/patches](../pilot/patches) and `pilot admin run-patches`. Until that patch runs, a host with no `common_config.toml` reads these tables from each bench's own `bench.toml`, so an unmigrated bench keeps the servers and credentials it was set up with instead of falling back to the defaults.

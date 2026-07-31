@@ -38,15 +38,13 @@ def test_representative_bench_toml_loads_and_round_trips(
     assert BenchConfig.from_file(round_trip_path) == config
 
 
-def test_from_file_on_a_standalone_fixture_ignores_its_own_common_fields() -> None:
-    """development_postgres.toml carries real postgres/jwks values, but
-    from_file() on a bare path (no common_config.toml two levels up) merges
-    an empty CommonConfig instead of reading them - see from_file()'s
-    docstring. This documents that known limitation explicitly."""
+def test_from_file_on_a_standalone_fixture_reads_its_own_common_fields() -> None:
+    """development_postgres.toml carries real postgres/jwks values and has no
+    common_config.toml two levels up, so from_file() keeps what it declares."""
     config = BenchConfig.from_file(FIXTURES / "development_postgres.toml")
-    assert config.postgres.host == "localhost"  # CommonConfig() default, not the fixture's "db.internal"
-    assert config.postgres.root_password == ""  # not the fixture's "fixture-postgres-password"
-    assert config.admin.jwks_url == ""  # not the fixture's real jwks_url
+    assert config.postgres.host == "db.internal"
+    assert config.postgres.root_password == "fixture-postgres-password"
+    assert config.admin.jwks_url == "https://identity.example.test/.well-known/jwks.json"
 
 
 def test_from_file_at_the_real_benches_root_depth_merges_common_config(tmp_path: Path) -> None:
