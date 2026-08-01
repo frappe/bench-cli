@@ -2,7 +2,7 @@
 
 import typing
 from dataclasses import dataclass, field
-from functools import lru_cache
+from functools import cache, lru_cache
 from typing import Literal
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
@@ -121,7 +121,7 @@ class Marketplace:
     def __post_init__(self):
         self.frappe_version = self.get_current_frappe_version()
         # Snapshot at construction so callers see a consistent registry for this instance.
-        self._registry = self._parse_registry(self._load_registry())
+        self._registry = self._load_registry()
 
     @staticmethod
     def _load_registry() -> list[dict]:
@@ -142,17 +142,27 @@ class Marketplace:
     @staticmethod
     @lru_cache(maxsize=1)
     def registry() -> list[dict]:
-        """Parsed registry for callers that don't have a Marketplace/bench (e.g. tasks). Cached once."""
-        return Marketplace._parse_registry(Marketplace._load_registry())
+        """The app index for callers that don't have a Marketplace/bench (e.g. tasks). Cached once."""
+        return Marketplace._load_registry()
 
     @staticmethod
-    def _parse_registry(raw: list[dict]) -> list[dict]:
-        for app in raw:
-            releases = app.get("releases") or []
-            for release in releases:
-                release["_spec"] = Marketplace._safe_spec(release.get("frappe_core"))
-            releases.sort(key=Marketplace._version_key, reverse=True)
-        return raw
+    def registry_by_name() -> dict[str, dict]:
+        """The index keyed by app name, so callers look an app up without indexing it themselves."""
+        return {entry["name"]: entry for entry in Marketplace.registry()}
+
+    @staticmethod
+    @cache
+    def releases(app_name: str) -> tuple[dict, ...]:
+        """One app's releases, read from the registry cache on first ask and kept
+        for the life of the process. Apps nobody asks about are never read."""
+        from pilot.core.registry_cache import RegistryCache
+        from pilot.utils import cli_root
+
+        return Marketplace._newest_first(RegistryCache(cli_root()).releases(app_name))
+
+    @staticmethod
+    def _newest_first(releases: list[dict]) -> tuple[dict, ...]:
+        return tuple(sorted(releases, key=Marketplace._version_key, reverse=True))
 
     @staticmethod
     def _version_key(release: dict) -> Version:
@@ -162,6 +172,16 @@ class Marketplace:
             return Version("0")
 
     @staticmethod
+    def _is_compatible(release: dict, frappe_version: Version) -> bool:
+        """An unparseable or absent frappe_core never matches - a release that
+        doesn't say what it supports isn't offered as installable."""
+        spec = Marketplace._safe_spec(release.get("frappe_core"))
+        if not spec:
+            return False
+        return frappe_version in spec
+
+    @staticmethod
+    @cache
     def _safe_spec(frappe_core: str | None) -> SpecifierSet | None:
         """None means unparseable - excluded from compatibility matching."""
         try:
@@ -197,9 +217,9 @@ class Marketplace:
         current_frappe = Version(self.frappe_version)
 
         for app in self._registry:
-            releases = app.get("releases") or []
+            releases = self.releases(app["name"])
             compatible = self._preferred_channel(
-                [r for r in releases if r["_spec"] and current_frappe in r["_spec"]]
+                [r for r in releases if self._is_compatible(r, current_frappe)]
             )
             best_match = compatible[0] if compatible else None
             display_release = best_match or (releases[0] if releases else {})

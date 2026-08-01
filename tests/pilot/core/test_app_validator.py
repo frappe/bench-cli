@@ -512,6 +512,21 @@ def test_fixtures_fail_on_unparsable_json(tmp_path: Path) -> None:
         FixturesCheck().run(app)
 
 
+@pytest.mark.parametrize("doctype", ["DocType", "Page"])
+def test_fixtures_fail_on_unimportable_doctypes(tmp_path: Path, doctype: str) -> None:
+    app = _make_app(
+        tmp_path,
+        "myapp",
+        '[project]\nname = "myapp"\n',
+        {
+            "myapp/hooks.py": "app_name = 'myapp'\n",
+            "myapp/fixtures/thing.json": f'[{{"doctype": "Role"}}, {{"doctype": "{doctype}"}}]\n',
+        },
+    )
+    with pytest.raises(AppValidationError, match=f"contains '{doctype}' records"):
+        FixturesCheck().run(app)
+
+
 def test_fixtures_pass_when_the_app_has_no_fixtures(tmp_path: Path) -> None:
     app = _make_app(tmp_path, "myapp", '[project]\nname = "myapp"\n', {"myapp/hooks.py": ""})
     FixturesCheck().run(app)

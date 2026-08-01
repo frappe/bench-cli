@@ -3,17 +3,15 @@ from __future__ import annotations
 import copy
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
 
+from pilot.core.database import Database, make_site_database
 from pilot.exceptions import BenchError
 from pilot.internal.atomic_file import exclusive_file_lock, replace_private_text_locked
 
-_DB_SOCKET_CANDIDATES = [
-    "/var/run/mysqld/mysqld.sock",
-    "/run/mysqld/mysqld.sock",
-    "/tmp/mysql.sock",
-    "/usr/local/var/mysql/mysql.sock",
-]
+_PROBE_CONNECT_TIMEOUT = 5
+_TRUE_SINGLES_VALUES = frozenset({"1", "true"})
 
 PROTECTED_CONFIG_KEYS = frozenset(
     {
@@ -53,64 +51,53 @@ _SENSITIVE_CONFIG_KEY_PARTS = (
 def list_installed_apps(site_config: dict, bench_root: Path, site_name: str) -> list[str]:
     if isinstance(site_config.get("installed_apps"), list):
         return site_config["installed_apps"]
-    apps = query_installed_apps_via_db(site_config)
+    apps = query_installed_apps_via_db(bench_root, site_name)
     if apps is not None:
         return apps
     return query_installed_apps_via_frappe(bench_root, site_name)
 
 
-def query_installed_apps_via_db(site_config: dict) -> list[str] | None:
-    output = _run_mysql_query(site_config, "SELECT app_name FROM `tabInstalled Application` ORDER BY idx")
-    if output is None:
-        return None
-    return [line.strip() for line in output.splitlines() if line.strip()]
-
-
-def is_setup_complete(site_config: dict) -> bool | None:
-    output = _run_mysql_query(
-        site_config,
-        "SELECT value FROM `tabSingles` WHERE doctype='System Settings' AND field='setup_complete'",
+def query_installed_apps_via_db(bench_root: Path, site_name: str) -> list[str] | None:
+    """None means the site database was unreachable, not that it has no apps."""
+    rows = _query_site_database(
+        bench_root,
+        site_name,
+        lambda database: (
+            f"SELECT app_name FROM {database.quote_identifier('tabInstalled Application')} ORDER BY idx"
+        ),
     )
-    if output is None:
+    if rows is None:
         return None
-    return output.strip() == "1"
+    return [str(row[0]).strip() for row in rows if row and str(row[0]).strip()]
 
 
-def _run_mysql_query(site_config: dict, sql: str) -> str | None:
-    import shutil
-    import subprocess
-
-    db_name = site_config.get("db_name", "")
-    db_password = site_config.get("db_password", "")
-    db_host = site_config.get("db_host") or "localhost"
-    db_port = int(site_config.get("db_port") or 3306)
-    if not db_name or not db_password:
+def is_setup_complete(bench_root: Path, site_name: str) -> bool | None:
+    """None means the site database was unreachable, so setup state is unknown."""
+    rows = _query_site_database(
+        bench_root,
+        site_name,
+        lambda database: (
+            f"SELECT value FROM {database.quote_identifier('tabSingles')} "
+            "WHERE doctype = 'System Settings' AND field = 'setup_complete'"
+        ),
+    )
+    if rows is None:
         return None
+    if not rows:
+        return False
+    return str(rows[0][0]).strip().lower() in _TRUE_SINGLES_VALUES
 
-    cli = shutil.which("mariadb") or shutil.which("mysql")
-    if not cli:
-        return None
 
-    conn_args = [f"--user={db_name}", f"--password={db_password}"]
-    if db_host in ("localhost", "127.0.0.1", ""):
-        socket_path = next((socket for socket in _DB_SOCKET_CANDIDATES if Path(socket).exists()), None)
-        if socket_path:
-            conn_args.append(f"--socket={socket_path}")
-        else:
-            conn_args += ["--host=127.0.0.1", f"--port={db_port}"]
-    else:
-        conn_args += [f"--host={db_host}", f"--port={db_port}"]
-
+def _query_site_database(
+    bench_root: Path,
+    site_name: str,
+    build_query: Callable[[Database], str],
+) -> list[list] | None:
+    """Read-only probe against a site's own database, whichever engine backs it.
+    `build_query` receives the engine so identifiers get quoted its way."""
     try:
-        result = subprocess.run(
-            [cli, *conn_args, "--batch", "--skip-column-names", db_name, "-e", sql],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode != 0:
-            return None
-        return result.stdout
+        database = make_site_database(bench_root, site_name, connect_timeout=_PROBE_CONNECT_TIMEOUT)
+        return database.execute(build_query(database)).rows
     except Exception:
         return None
 

@@ -11,6 +11,7 @@ from pilot.core.database.base import (
     TableSize,
 )
 from pilot.core.database.engines.helpers import (
+    DEFAULT_CONNECT_TIMEOUT,
     MAX_ROWS,
     disk_free,
     is_local_host,
@@ -21,25 +22,38 @@ from pilot.exceptions import DatabaseError
 
 
 class PostgreSQL(Database):
-    def __init__(self, host: str, port: int, user: str, password: str, database: str) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        user: str,
+        password: str,
+        database: str,
+        connect_timeout: int = DEFAULT_CONNECT_TIMEOUT,
+    ) -> None:
         self._host = host
         self._port = port
         self._user = user
         self._password = password
         self._database = database
+        self._connect_timeout = connect_timeout
 
     def _connect(self):
         try:
             import psycopg2
         except ImportError as exc:
             raise DatabaseError("psycopg2 is not installed. Run: pip install psycopg2-binary") from exc
-        return psycopg2.connect(
-            host=self._host,
-            port=self._port,
-            user=self._user,
-            password=self._password,
-            dbname=self._database,
-        )
+        try:
+            return psycopg2.connect(
+                host=self._host,
+                port=self._port,
+                user=self._user,
+                password=self._password,
+                dbname=self._database,
+                connect_timeout=self._connect_timeout,
+            )
+        except psycopg2.Error as exc:
+            raise DatabaseError(f"Could not connect to PostgreSQL at {self._host}:{self._port}: {exc}") from exc
 
     def execute(self, query: str, read_only: bool = True) -> QueryResult:
         conn = self._connect()

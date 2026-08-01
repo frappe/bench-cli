@@ -1,25 +1,20 @@
 <template>
-  <Dialog v-model="open" :options="{ title: 'Which site are you browsing for?', size: 'md' }">
+  <Dialog v-model="open" :options="{ title: 'Choose site', size: 'md' }">
     <template #body-content>
-      <p v-if="!sites.length" class="py-6 text-ink-gray-5 text-sm text-center">
+      <p v-if="!sites.length" class="py-6 text-ink-gray-5 text-p-sm text-center">
         No sites on this bench yet. Create a site to install apps.
       </p>
 
       <template v-else>
-        <p class="mb-4 text-ink-gray-6 text-p-sm">
-          Installed apps are marked, and installs target this site.
-        </p>
-
-        <div class="gap-2 grid max-h-96 overflow-y-auto">
+        <div class="gap-1.5 grid max-h-96 overflow-y-auto">
           <SiteRow
             label="All sites"
-            subtitle="Browse every available app"
             icon="lucide-layout-grid"
             :selected="!site"
             @click="choose('')"
           >
             <template #suffix>
-              <span v-if="!site" class="size-4 text-ink-gray-8 shrink-0 lucide-check" />
+              <span v-if="!site" class="size-4 text-ink-gray-9 shrink-0 lucide-check" />
             </template>
           </SiteRow>
 
@@ -27,12 +22,17 @@
             v-for="s in sites"
             :key="s.name"
             :label="s.name"
-            :subtitle="siteSubtitle(s)"
             :selected="s.name === site"
             @click="choose(s.name)"
           >
             <template #suffix>
-              <span v-if="s.name === site" class="size-4 text-ink-gray-8 shrink-0 lucide-check" />
+              <span class="w-20 text-ink-gray-5 text-sm text-right shrink-0">
+                {{ siteMeta(s) }}
+              </span>
+              <span
+                v-if="s.name === site"
+                class="size-4 text-ink-gray-9 shrink-0 lucide-check"
+              />
             </template>
           </SiteRow>
         </div>
@@ -51,11 +51,9 @@ defineProps({
 const open = defineModel('open')
 const site = defineModel('site')
 
-function siteSubtitle(s) {
+function siteMeta(s) {
   const count = s.installed_apps?.length || 0
-  const match = /^version-(\d+)/.exec(s.framework_branch || '')
-  const version = match ? ` · Version ${match[1]}` : ''
-  return `${count} app${count === 1 ? '' : 's'}${version}`
+  return `${count} app${count === 1 ? '' : 's'}`
 }
 
 function choose(name) {

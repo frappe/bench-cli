@@ -10,17 +10,17 @@
     <div class="relative -mx-4 sm:-mx-6 -mt-6 px-4 sm:px-6 pt-6 pb-7 overflow-hidden">
       <div class="absolute inset-0 pointer-events-none dot-field" aria-hidden="true" />
       <div
-        class="relative flex justify-between items-center gap-3 bg-surface-base p-2 sm:p-4 border rounded-xl border-outline-gray-2"
+        class="relative flex justify-between items-center gap-3 mt-2 bg-surface-base p-2 sm:p-4 border rounded-xl border-outline-gray-2"
       >
         <div class="flex items-center gap-3 min-w-0">
           <span
-            class="place-items-center grid bg-surface-elevation-1 border rounded-xl border-outline-gray-2 size-10 sm:size-12 text-ink-gray-6 shrink-0"
+            class="place-items-center grid bg-surface-gray-2 rounded-lg size-9 sm:size-10 text-ink-gray-6 shrink-0"
           >
-            <span class="size-5 sm:size-6 lucide-globe" />
+            <span class="size-4 sm:size-5 lucide-globe" />
           </span>
           <div class="min-w-0">
             <div class="flex items-center gap-2 min-w-0">
-              <h1 class="font-semibold text-ink-gray-9 text-base sm:text-xl truncate">
+              <h1 class="font-medium text-ink-gray-9 text-lg truncate">
                 {{ site.name }}
               </h1>
               <Badge
@@ -268,8 +268,8 @@ onMounted(() => {
 <style scoped>
 .dot-field {
   background-image: radial-gradient(var(--outline-gray-3) 1.1px, transparent 1.3px);
-  background-size: 20px 20px;
-  background-position: -8px -8px;
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.95), transparent 90%);
+  background-size: 12px 12px;
+  background-position: -5px -5px;
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.95), transparent 100%);
 }
 </style>

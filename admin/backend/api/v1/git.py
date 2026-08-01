@@ -8,6 +8,7 @@ from admin.backend.api.responses import error_response, no_content_response
 from pilot.core.bench import Bench
 from pilot.integrations.git import (
     TOKEN_HELP_URLS,
+    BranchNotFoundError,
     GitAuthError,
     GitCredentialStore,
     GitProviderError,
@@ -168,24 +169,38 @@ def list_branches():
     return jsonify({"branches": branches, "default_branch": default_branch})
 
 
+def _resolution_request(data) -> tuple[str, str] | tuple[None, None]:
+    """(repo, branch) from the payload, or (None, None) when it is unusable."""
+    if not isinstance(data, dict):
+        return None, None
+    if any(
+        value is not None and not isinstance(value, str) for value in (data.get("repo"), data.get("branch"))
+    ):
+        return None, None
+    return (data.get("repo") or "").strip(), (data.get("branch") or "").strip()
+
+
 @git_bp.post("/repository-resolutions")
 def resolve_app():
     bench_root = Path(current_app.config["BENCH_ROOT"])
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return error_response("malformed_request", "Expected a JSON object.", 400)
-    if any(
-        value is not None and not isinstance(value, str) for value in (data.get("repo"), data.get("branch"))
-    ):
+    repo_url, branch = _resolution_request(data)
+    if repo_url is None:
         return error_response("invalid_repository", "Repository fields must be strings.", 422)
-    repo_url = (data.get("repo") or "").strip()
-    branch = (data.get("branch") or "").strip()
     if not repo_url:
         return error_response("repository_required", "repo is required.", 422)
     if provider_for_repo(repo_url) is None:
         return error_response("invalid_repository", "Enter a supported repository URL.", 422)
+    return _resolved_app_response(bench_root, repo_url, branch)
+
+
+def _resolved_app_response(bench_root: Path, repo_url: str, branch: str):
     try:
         resolved = resolve_app_name_from_repo(bench_root, repo_url, branch)
+    except BranchNotFoundError as exc:
+        return error_response("branch_not_found", str(exc), 422)
     except GitAuthError:
         return error_response(
             "invalid_git_token",

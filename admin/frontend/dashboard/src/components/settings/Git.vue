@@ -3,20 +3,18 @@
     <span class="size-5 text-ink-gray-4 animate-spin lucide-loader-circle"></span>
   </div>
   <div v-else class="space-y-6">
-    <Alert v-if="!connected" theme="blue" title="Why connect GitHub?" :dismissible="false">
+    <Alert v-if="!connected" theme="blue" title="Connect GitHub" :dismissible="false">
       <template #description>
         <p class="text-ink-gray-6 text-p-sm">
-          Connecting a GitHub account lets you install private apps and browse your repositories
-          from the "Add app from GitHub" dialog. Generate a
+          Install private apps and browse your repos. Paste a
           <a
             :href="tokenHelpUrl"
             target="_blank"
             rel="noopener"
             class="underline underline-offset-2"
+            >token</a
           >
-            personal access token</a
-          >
-          with <code class="text-xs">repo</code> scope, then paste it below.
+          with <code class="text-xs">repo</code> scope below.
         </p>
       </template>
     </Alert>

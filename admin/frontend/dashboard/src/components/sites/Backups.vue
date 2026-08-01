@@ -2,8 +2,8 @@
   <div class="space-y-4 mt-5">
     <div class="flex sm:flex-row flex-col sm:justify-between sm:items-center gap-3">
       <div>
-        <p class="font-medium text-ink-gray-8 text-sm">Automated backups</p>
-        <p class="mt-0.5 text-ink-gray-5 text-sm">{{ scheduleSummary }}</p>
+        <p class="font-medium text-ink-gray-8 text-base">Automated backups</p>
+        <p class="mt-0.5 text-ink-gray-5 text-p-sm">{{ scheduleSummary }}</p>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <Button variant="subtle" size="sm" @click="configRef.open()"

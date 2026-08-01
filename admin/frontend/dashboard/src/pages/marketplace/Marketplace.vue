@@ -1,16 +1,13 @@
 <template>
-  <div class="mx-auto max-w-3xl">
+  <div class="mx-auto max-w-3xl pb-40">
     <!-- Header -->
     <div class="flex justify-between items-start gap-4 pt-4 pb-2">
       <div class="flex flex-col items-start">
         <div class="flex items-center gap-2.5">
-          <!-- !font-semibold: responsive text-* classes bake font-weight 420 and would override it -->
-          <h1 class="!font-semibold text-ink-gray-9 text-2xl sm:text-3xl tracking-tight">
-            Explore Frappe Marketplace
-          </h1>
+          <h1 class="font-semibold text-ink-gray-9 text-xl">Explore Frappe Marketplace</h1>
           <span
             v-if="benchVersionLabel"
-            class="inline-flex items-center gap-1 bg-surface-gray-2 px-2 py-0.5 rounded-full h-min text-ink-gray-6 text-p-xs shrink-0"
+            class="inline-flex items-center gap-1 bg-surface-gray-2 px-2 py-0.5 rounded-full h-min text-ink-gray-6 text-xs shrink-0"
           >
             <span class="size-3 lucide-box"></span> {{ benchVersionLabel }}
           </span>
@@ -19,20 +16,15 @@
           Open source apps built by developers worldwide for the Frappe ecosystem
         </p>
       </div>
-      <button
-        type="button"
-        class="group inline-flex items-center bg-surface-gray-2 hover:bg-surface-gray-3 active:scale-[0.97] mt-1 px-2.5 py-1 rounded-full h-min text-ink-gray-7 text-p-sm shrink-0 transition duration-200 ease-[var(--ease-out)]"
-        @click="showChooseSite = true"
-      >
-        <span
-          class="size-3.5 text-ink-gray-5 mr-1.5"
-          :class="currentSiteName ? 'lucide-globe' : 'lucide-layout-grid'"
-        />
+      <Button class="shrink-0" @click="showChooseSite = true">
+        <template #prefix>
+          <span class="size-4 text-ink-gray-5 lucide-globe" />
+        </template>
         {{ siteLabel }}
-        <span
-          class="size-3.5 text-ink-gray-5 max-w-0 ml-0 opacity-0 overflow-hidden group-hover:max-w-4 group-hover:ml-1 group-hover:opacity-100 transition-[max-width,margin,opacity] duration-200 ease-[var(--ease-out)] lucide-square-pen"
-        />
-      </button>
+        <template #suffix>
+          <span class="size-4 text-ink-gray-5 lucide-chevron-down" />
+        </template>
+      </Button>
     </div>
 
     <!-- Filters -->
@@ -54,9 +46,9 @@
 
     <template v-else-if="isFiltered">
       <section v-if="filteredApps.length" class="mt-12">
-        <p class="font-medium text-ink-gray-9 text-base">
+        <h2 class="font-medium text-ink-gray-9 text-base">
           {{ filteredHeading }}
-        </p>
+        </h2>
         <div class="gap-x-6 gap-y-4 grid grid-cols-1 md:grid-cols-2 mt-3">
           <MarketplaceAppCard
             v-for="app in filteredApps"
@@ -71,7 +63,7 @@
 
     <template v-else>
       <section v-if="otherBenchApps.length" class="mt-12">
-        <p class="font-medium text-ink-gray-9 text-base">Your custom apps</p>
+        <h2 class="font-medium text-ink-gray-9 text-base">Your custom apps</h2>
         <div class="gap-x-6 gap-y-4 grid grid-cols-1 md:grid-cols-2 mt-3">
           <MarketplaceAppCard
             v-for="app in otherBenchApps"
@@ -83,7 +75,7 @@
       </section>
 
       <section v-if="frappeApps.length" :class="otherBenchApps.length ? 'mt-10' : 'mt-12'">
-        <p class="font-medium text-ink-gray-9 text-base">From Frappe</p>
+        <h2 class="font-medium text-ink-gray-9 text-base">From Frappe</h2>
         <div class="gap-x-6 gap-y-4 grid grid-cols-1 md:grid-cols-2 mt-3">
           <MarketplaceAppCard
             v-for="app in frappeApps"
@@ -95,7 +87,7 @@
       </section>
 
       <section v-if="communityApps.length" class="mt-10">
-        <p class="font-medium text-ink-gray-9 text-base">Community</p>
+        <h2 class="font-medium text-ink-gray-9 text-base">Community</h2>
         <div class="gap-x-6 gap-y-4 grid grid-cols-1 md:grid-cols-2 mt-3">
           <MarketplaceAppCard
             v-for="app in communityApps"
@@ -122,13 +114,13 @@
     :sites="sites"
     :site-name="currentSiteName"
   />
-  <AddAppFromGithubDialog v-model:open="showAddFromGithub" />
+  <AddAppFromGithubDialog v-model:open="showAddFromGithub" :site-name="currentSiteName" />
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { ErrorMessage, LoadingText } from 'frappe-ui'
+import { Button, ErrorMessage, LoadingText } from 'frappe-ui'
 import AddAppFromGithubDialog from '@/components/apps/AddAppFromGithubDialog.vue'
 import ChooseSiteDialog from '@/components/sites/ChooseSiteDialog.vue'
 import InstallAppDialog from '@/components/apps/InstallAppDialog.vue'

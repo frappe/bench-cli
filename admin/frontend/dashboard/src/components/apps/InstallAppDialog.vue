@@ -1,52 +1,66 @@
 <template>
   <ActionDialog
     v-model:open="open"
-    title="Install App"
-    :subject="{ name: app?.name, label: appLabel, badge: app?.label, description: app?.description, logo: app?.logo_url }"
+    :title="`Install ${appLabel} on`"
     :error="error"
     confirm-label="Install"
     :loading="installing"
-    :disabled="!selection || presetInstalled"
+    :disabled="!selection || targetInstalled"
     @confirm="confirmInstall"
   >
-    <div class="space-y-2">
-      <p class="font-medium text-ink-gray-5 text-p-xs uppercase tracking-wide">Install on</p>
+    <SiteRow v-if="targetSite" :label="targetSite.name" selected :interactive="false">
+      <template #suffix>
+        <span class="w-20 text-ink-gray-5 text-sm text-right shrink-0">
+          {{ siteMeta(targetSite) }}
+        </span>
+        <span
+          v-if="targetInstalled"
+          class="size-4 text-ink-gray-9 shrink-0 lucide-check"
+          role="img"
+          aria-label="Already installed"
+        />
+      </template>
+    </SiteRow>
+
+    <div v-else class="gap-1.5 grid max-h-80 overflow-y-auto">
+      <SiteRow
+        v-if="showAllSitesOption"
+        label="All sites"
+        icon="lucide-layout-grid"
+        :selected="selection === 'all'"
+        @click="selection = 'all'"
+      >
+        <template #suffix>
+          <span class="w-20 text-ink-gray-5 text-sm text-right shrink-0">
+            {{ installableSites.length }} sites
+          </span>
+        </template>
+      </SiteRow>
 
       <SiteRow
-        v-if="presetSite"
-        :label="presetSite.name"
-        :subtitle="presetInstalled ? 'Already installed' : siteVersion(presetSite)"
-        :icon="presetInstalled ? 'lucide-check' : 'lucide-globe'"
-        :checked="presetInstalled"
-        :interactive="false"
-      />
+        v-for="s in sites"
+        :key="s.name"
+        :label="s.name"
+        :disabled="isInstalled(s)"
+        :selected="selection === s.name"
+        @click="selection = s.name"
+      >
+        <template #suffix>
+          <span class="w-20 text-ink-gray-5 text-sm text-right shrink-0">
+            {{ siteMeta(s) }}
+          </span>
+          <span
+            v-if="isInstalled(s)"
+            class="size-4 text-ink-gray-9 shrink-0 lucide-check"
+            role="img"
+            aria-label="Already installed"
+          />
+        </template>
+      </SiteRow>
 
-      <div v-else class="gap-2 grid max-h-80 overflow-y-auto">
-        <SiteRow
-          v-if="showAllSitesOption"
-          label="All sites"
-          :subtitle="`Installs on ${installableSites.length} sites`"
-          icon="lucide-layout-grid"
-          :selected="selection === 'all'"
-          @click="selection = 'all'"
-        />
-
-        <SiteRow
-          v-for="s in sites"
-          :key="s.name"
-          :label="s.name"
-          :subtitle="isInstalled(s) ? 'Already installed' : siteVersion(s)"
-          :icon="isInstalled(s) ? 'lucide-check' : 'lucide-globe'"
-          :checked="isInstalled(s)"
-          :disabled="isInstalled(s)"
-          :selected="selection === s.name"
-          @click="selection = s.name"
-        />
-
-        <p v-if="!sites.length" class="py-6 text-ink-gray-5 text-sm text-center">
-          No sites available on this bench.
-        </p>
-      </div>
+      <p v-if="!sites.length" class="py-6 text-ink-gray-5 text-p-sm text-center">
+        No sites available on this bench.
+      </p>
     </div>
   </ActionDialog>
 </template>
@@ -75,11 +89,14 @@ const error = ref('')
 const appLabel = computed(() => props.app?.title || props.app?.name || '')
 
 const presetSite = computed(() => props.sites.find((s) => s.name === props.siteName) || null)
-const presetInstalled = computed(() => Boolean(presetSite.value && isInstalled(presetSite.value)))
+// A single-site bench behaves like a preset: shown for confirmation, never asked.
+const soleSite = computed(() => (props.sites.length === 1 ? props.sites[0] : null))
+const targetSite = computed(() => presetSite.value || soleSite.value)
+const targetInstalled = computed(() => Boolean(targetSite.value && isInstalled(targetSite.value)))
 
 watch(open, (isOpen) => {
   if (!isOpen) return
-  selection.value = props.siteName || null
+  selection.value = props.siteName || soleSite.value?.name || null
   error.value = ''
 })
 
@@ -91,9 +108,9 @@ function isInstalled(site) {
   return Boolean(props.app && site.installed_apps?.includes(props.app.name))
 }
 
-function siteVersion(site) {
-  const match = /^version-(\d+)/.exec(site.framework_branch || '')
-  return match ? `Version ${match[1]}` : ''
+function siteMeta(site) {
+  const n = site.installed_apps?.length || 0
+  return `${n} app${n === 1 ? '' : 's'}`
 }
 
 async function startInstall(site) {

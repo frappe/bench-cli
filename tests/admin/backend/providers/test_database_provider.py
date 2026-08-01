@@ -50,6 +50,24 @@ def test_sqlite_bench_has_no_database_server(tmp_path) -> None:
             call()
 
 
+def test_get_diagnostics_reports_no_binlog_for_an_engine_without_one() -> None:
+    """PostgreSQL has no binary log. The section goes null instead of failing
+    the whole payload, which used to leave the page with no engine at all."""
+    db = Mock()
+    db.get_active_connections.return_value = 3
+    db.get_lock_waits.return_value = LockWaitStatus(current_waits=0, total_waits=None, timeout_seconds=None)
+    db.get_binlog_status.side_effect = NotImplementedError
+    provider = DatabaseDiagnosticsProvider(bench_root=None, database=db, engine="postgres")
+
+    assert provider.get_diagnostics() == {
+        "engine": "postgres",
+        "supported": True,
+        "active_connections": 3,
+        "lock_waits": {"current_waits": 0, "total_waits": None, "timeout_seconds": None},
+        "binlog": None,
+    }
+
+
 def test_get_binlog_files_shapes_files_as_dicts() -> None:
     db = Mock()
     db.get_binlog_files.return_value = [BinlogFile(name="mysql-bin.000001", size_bytes=1024, modified_ms=17)]

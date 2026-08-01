@@ -41,34 +41,46 @@ class AppRepository:
         hash = self.installed_hash
         return bool(hash) and hash.startswith(pin.ref)
 
-    def has_marketplace_update(self, marketplace_entry: dict | None) -> bool:
+    def has_marketplace_update(self) -> bool:
         """Whether a newer version is available, per this app's marketplace entry."""
-        pin = self.update_target(marketplace_entry)
+        pin = self.update_target()
         return pin is not None and not self.is_on_revision(pin)
 
-    def update_target(self, marketplace_entry: dict | None) -> RevisionPin | None:
+    def update_target(self) -> RevisionPin | None:
         """The fixed revision this app would update to, or None when there is none. (forward only)"""
-        if marketplace_entry and self.is_marketplace_app(marketplace_entry):
-            release = self.forward_release(marketplace_entry)
+        entry = self.marketplace_entry
+        if entry:
+            release = self.forward_release(entry)
             return RevisionPin.from_marketplace_release(release) if release else None
         if not self.app.config.branch:
             return None
         tip = self.repo.remote_branch_sha(self.app.config.branch)
         return RevisionPin(kind="commit", ref=tip) if tip else None
 
-    def is_marketplace_app(self, marketplace_entry: dict | None) -> bool:
-        """Whether the registry entry describes this app's own repository."""
+    @property
+    def marketplace_entry(self) -> dict | None:
+        """The registry entry describing this app's own repository, or None when
+        the app is unlisted or its repo is a fork of a listed one."""
         from pilot.integrations.git.base import same_repository
+        from pilot.integrations.marketplace import Marketplace
 
-        if not marketplace_entry:
-            return False
-        return same_repository(self.app.config.repo, marketplace_entry.get("repo", ""))
+        entry = Marketplace.registry_by_name().get(self.app.config.name)
+        if not entry or not same_repository(self.app.config.repo, entry.get("repo", "")):
+            return None
+        return entry
 
     def forward_release(self, marketplace_entry: dict) -> dict | None:
         """The newest release advertised for this app's branch, when git says it
         is ahead of the checked-out commit. Releases arrive newest-first."""
+        from pilot.integrations.marketplace import Marketplace
+
         newest = next(
-            (r for r in marketplace_entry["releases"] if r.get("branch") == self.app.config.branch), None
+            (
+                r
+                for r in Marketplace.releases(marketplace_entry["name"])
+                if r.get("branch") == self.app.config.branch
+            ),
+            None,
         )
         if newest is None or not newest.get("commit"):
             return None
@@ -87,13 +99,6 @@ class AppRepository:
             self._sync_remote_url()
             repo.fetch(commit, timeout=_FETCH_TIMEOUT_SECONDS)
         return not repo.is_ancestor(commit, installed)
-
-    def has_remote_update(self) -> bool:
-        """Check the remote branch tip without downloading objects."""
-        if not self.app.config.branch:
-            return False
-        remote_sha = self.repo.remote_branch_sha(self.app.config.branch)
-        return bool(remote_sha and self.installed_hash and remote_sha != self.installed_hash)
 
     @property
     def remote_url(self) -> str:

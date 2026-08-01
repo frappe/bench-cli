@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from pilot.integrations.git.base import (
@@ -75,6 +76,14 @@ class GitHubProvider(GitProvider):
         url = f"{self.api_base}/repos/{full_name}/branches?per_page=100"
         data, _ = self._get_json(url, self._headers())
         return [b["name"] for b in data]
+
+    def has_branch(self, full_name: str, branch: str) -> bool:
+        url = f"{self.api_base}/repos/{full_name}/branches/{urllib.parse.quote(branch, safe='')}"
+        try:
+            self._get_json(url, self._headers())
+        except GitProviderError:
+            return False
+        return True
 
     def get_default_branch(self, full_name: str) -> str:
         url = f"{self.api_base}/repos/{full_name}"

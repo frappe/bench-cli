@@ -294,16 +294,16 @@ def list_installed_apps(site_config: dict, bench_root: Path, site_name: str) -> 
     return _list_installed_apps(site_config, bench_root, site_name)
 
 
-def query_installed_apps_via_db(site_config: dict) -> list[str] | None:
+def query_installed_apps_via_db(bench_root: Path, site_name: str) -> list[str] | None:
     from pilot.core.site.config import query_installed_apps_via_db as _query_installed_apps_via_db
 
-    return _query_installed_apps_via_db(site_config)
+    return _query_installed_apps_via_db(bench_root, site_name)
 
 
-def is_setup_complete(site_config: dict) -> bool | None:
+def is_setup_complete(bench_root: Path, site_name: str) -> bool | None:
     from pilot.core.site.config import is_setup_complete as _is_setup_complete
 
-    return _is_setup_complete(site_config)
+    return _is_setup_complete(bench_root, site_name)
 
 
 def set_site_ssl_flag(sites_root: Path, site_name: str, enabled: bool) -> None:

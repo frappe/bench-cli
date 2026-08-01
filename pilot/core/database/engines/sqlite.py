@@ -59,10 +59,9 @@ class SQLite(Database):
             conn.close()
 
     def get_table_columns(self, table: str) -> list[dict]:
-        safe = table.replace('"', "")
         conn = self._connect()
         try:
-            cursor = conn.execute(f'PRAGMA table_info("{safe}")')
+            cursor = conn.execute(f"PRAGMA table_info({self.quote_identifier(table)})")
             return [{"name": r["name"], "type": r["type"]} for r in cursor.fetchall()]
         finally:
             conn.close()

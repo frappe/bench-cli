@@ -74,12 +74,6 @@ class GitRepo:
                 return sha
         return ""
 
-    def has_remote_update(self) -> bool:
-        """Whether origin's branch tip is ahead of local HEAD (one network call)."""
-        remote = self.remote_branch_sha(self.branch)
-        local = self.head_sha
-        return bool(remote and local and remote != local)
-
     def fetch(self, *refspecs: str, timeout: float | None = None) -> bool:
         """Best-effort fetch from origin; returns False instead of raising on failure."""
         return self._run("fetch", "origin", *refspecs, "--quiet", timeout=timeout).returncode == 0

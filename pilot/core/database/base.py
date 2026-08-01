@@ -77,6 +77,11 @@ class Database(ABC):
     @abstractmethod
     def execute(self, query: str, read_only: bool = True) -> QueryResult: ...
 
+    def quote_identifier(self, name: str) -> str:
+        """ANSI double quoting, which PostgreSQL and SQLite both accept.
+        MariaDB overrides it with backticks."""
+        return '"{}"'.format(name.replace('"', ""))
+
     @abstractmethod
     def get_tables(self) -> list[str]: ...
 

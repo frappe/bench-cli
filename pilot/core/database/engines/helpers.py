@@ -9,6 +9,10 @@ from pilot.exceptions import DatabaseError
 # exhaust memory. Callers surface the overflow as QueryResult.truncated.
 MAX_ROWS = 5000
 
+# Seconds to wait for a TCP connection before giving up, so an unreachable
+# database server cannot stall a request indefinitely.
+DEFAULT_CONNECT_TIMEOUT = 10
+
 
 def rows_as_dicts(result: QueryResult) -> list[dict]:
     return [dict(zip(result.columns, row, strict=True)) for row in result.rows]

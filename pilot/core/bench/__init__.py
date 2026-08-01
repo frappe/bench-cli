@@ -372,11 +372,3 @@ class Bench:
         from pilot.core.bench.update import BenchUpdater
 
         BenchUpdater(self).rebuild_assets(apps_filter, on_progress)
-
-
-def _marketplace_pin(app: "App", marketplace_by_name: dict) -> "RevisionPin | None":
-    """Marketplace's advertised pin for app's installed version, or None for a
-    branch target, unlisted app, or repo mismatch (e.g. a fork)."""
-    from pilot.core.bench.update import marketplace_pin
-
-    return marketplace_pin(app, marketplace_by_name)

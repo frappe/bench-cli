@@ -6,6 +6,7 @@ from pathlib import Path
 
 from pilot.integrations.git.base import (
     TOKEN_HELP_URLS,
+    BranchNotFoundError,
     GitAuthError,
     GitProvider,
     GitProviderError,
@@ -18,6 +19,7 @@ from pilot.integrations.git.github import GitHubProvider, parse_github_owner_rep
 __all__ = [
     "CREDENTIALS_FILENAME",
     "TOKEN_HELP_URLS",
+    "BranchNotFoundError",
     "GitAuthError",
     "GitCredentialStore",
     "GitHubProvider",
@@ -65,7 +67,13 @@ def resolve_app_name_from_repo(bench_root: Path, repo_url: str, branch: str = ""
             "Only GitHub is supported for automatic app-name resolution."
         )
 
-    ref = branch.strip() or "HEAD"
+    requested_branch = branch.strip()
+    if requested_branch and not provider.has_branch(
+        "/".join(parse_github_owner_repo(repo_url)), requested_branch
+    ):
+        raise BranchNotFoundError(f"'{requested_branch}' is not a branch of this repository.")
+
+    ref = requested_branch or "HEAD"
     content = provider.fetch_raw_file(repo_url, "pyproject.toml", ref)
 
     try:

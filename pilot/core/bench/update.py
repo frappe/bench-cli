@@ -24,17 +24,14 @@ class BenchUpdater:
         from pilot.exceptions import CommandError, MigrateError
 
         live_lookup = pins is None
-        marketplace_by_name = self._marketplace_registry() if live_lookup else {}
         pins = pins or {}
 
         updated = []
         for app in self.bench.apps():
             if apps_filter is not None and app.config.name not in apps_filter:
                 continue
-            pin = pins.get(app.config.name) or (
-                marketplace_pin(app, marketplace_by_name) if live_lookup else None
-            )
-            if pin is None and not self._follows_its_branch(app, marketplace_by_name, live_lookup):
+            pin = pins.get(app.config.name) or (marketplace_pin(app) if live_lookup else None)
+            if pin is None and not self._follows_its_branch(app, live_lookup):
                 on_progress(f"{app.config.name} is at the newest advertised release, skipping.")
                 continue
             on_progress(f"Updating {app.config.name}...")
@@ -53,16 +50,8 @@ class BenchUpdater:
             app.validate()
 
     @staticmethod
-    def _follows_its_branch(app: "App", marketplace_by_name: dict, live_lookup: bool) -> bool:
-        if not live_lookup:
-            return False
-        return not app.is_marketplace_app(marketplace_by_name.get(app.config.name))
-
-    @staticmethod
-    def _marketplace_registry() -> dict:
-        from pilot.integrations.marketplace import Marketplace
-
-        return {entry["name"]: entry for entry in Marketplace.registry()}
+    def _follows_its_branch(app: "App", live_lookup: bool) -> bool:
+        return live_lookup and not app.is_marketplace
 
     def reinstall_apps(self, apps_filter: set | None, on_progress: Callable[[str], None]) -> None:
         from pilot.exceptions import CommandError, MigrateError
@@ -89,9 +78,6 @@ class BenchUpdater:
             python_env.build_assets_for_app(app)
 
 
-def marketplace_pin(app: "App", marketplace_by_name: dict) -> "RevisionPin | None":
+def marketplace_pin(app: "App") -> "RevisionPin | None":
     """The newer advertised release for a marketplace app, or None when there is none."""
-    entry = marketplace_by_name.get(app.config.name)
-    if not app.is_marketplace_app(entry):
-        return None
-    return app.update_target(entry)
+    return app.update_target() if app.is_marketplace else None

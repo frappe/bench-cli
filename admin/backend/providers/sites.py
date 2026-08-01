@@ -92,14 +92,14 @@ class SiteProvider:
             if isinstance(site_config.get("installed_apps"), list):
                 installed_apps = site_config["installed_apps"]
             elif not is_provisioning:
-                apps = query_installed_apps_via_db(site_config)
+                apps = query_installed_apps_via_db(self._bench_root, site_name)
                 if apps is not None:
                     installed_apps = apps
                 else:
                     broken = True
 
             if not is_provisioning and not broken:
-                setup_complete = bool(is_setup_complete(site_config))
+                setup_complete = bool(is_setup_complete(self._bench_root, site_name))
 
         return SiteInfo(
             name=site_name,

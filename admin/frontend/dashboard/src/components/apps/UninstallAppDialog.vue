@@ -13,10 +13,6 @@
     :loading="uninstalling"
     @confirm="confirmUninstall"
   >
-    <div class="space-y-2">
-      <p class="font-medium text-ink-gray-5 text-p-xs uppercase tracking-wide">Uninstall from</p>
-      <SiteRow :label="siteName" icon="lucide-globe" :interactive="false" />
-    </div>
   </ActionDialog>
 </template>
 

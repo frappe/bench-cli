@@ -24,6 +24,10 @@ class GitProviderError(BenchError):
     """A provider API call failed for a non-auth reason."""
 
 
+class BranchNotFoundError(GitProviderError):
+    """The repository has no branch by that name."""
+
+
 class GitProvider(abc.ABC):
     """Base class for a Git hosting provider's administrative API."""
 
@@ -48,6 +52,11 @@ class GitProvider(abc.ABC):
     @abc.abstractmethod
     def list_branches(self, full_name: str) -> list[str]:
         """Return branch names for *full_name* (``owner/repo``), up to 100."""
+
+    def has_branch(self, full_name: str, branch: str) -> bool:
+        """Whether *branch* exists, asked of the provider rather than of the
+        branch list - a repository can have more branches than a page holds."""
+        return branch in self.list_branches(full_name)
 
     def fetch_raw_file(self, repo_url: str, path: str, ref: str = "HEAD") -> str:
         """Return raw text content from a repository ref."""

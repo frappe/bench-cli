@@ -1,33 +1,17 @@
 <template>
   <Teleport defer to="#header-actions">
-    <div class="flex items-center gap-2">
-      <FormControl
-        v-if="siteOptions.length > 1"
-        type="select"
-        v-model="selectedSite"
-        :options="siteOptions"
-        class="w-32 sm:w-44"
-      />
-      <FormControl type="select" v-model="engine" :options="engineOptions" class="w-32 sm:w-40" />
-    </div>
+    <FormControl
+      v-if="siteOptions.length > 1"
+      type="select"
+      v-model="selectedSite"
+      :options="siteOptions"
+      class="w-32 sm:w-44"
+    />
   </Teleport>
 
   <div class="flex flex-col gap-4">
     <div v-if="loading && !diagnostics" class="flex justify-center py-16">
       <LoadingText />
-    </div>
-
-    <div
-      v-else-if="engine !== configuredEngine"
-      class="flex flex-col items-center gap-1 bg-surface-white py-14 border rounded-lg border-outline-gray-2 text-center"
-    >
-      <span class="size-6 text-ink-gray-3 lucide-database-zap" />
-      <p class="font-medium text-ink-gray-7 text-sm">Not configured on this bench</p>
-      <p class="max-w-sm text-ink-gray-5 text-xs">
-        This bench runs {{ engineLabel(configuredEngine) }}. Switch the selector back to
-        {{ engineLabel(configuredEngine) }}
-        to see its diagnostics.
-      </p>
     </div>
 
     <div
@@ -124,6 +108,7 @@
       </DatabasePanel>
 
       <DatabasePanel
+        v-if="hasBinlogs"
         title="Database Binary Logs"
         subtitle="Manage the binary logs of the database"
         :badge="selectedSite ? 'Server-wide' : ''"
@@ -308,18 +293,12 @@ const binlogColumns = [
   { label: '', key: 'actions', align: 'right', width: '3rem' },
 ]
 
-const engineOptions = [
-  { label: 'MariaDB', value: 'mariadb' },
-  { label: 'PostgreSQL', value: 'postgres' },
-]
-
 const route = useRoute()
 
 const loading = ref(false)
 const error = ref('')
 const diagnostics = ref(null)
-const engine = ref('mariadb')
-const configuredEngine = ref('mariadb')
+const configuredEngine = ref('')
 const sites = ref([])
 const selectedSite = ref('')
 
@@ -428,11 +407,14 @@ const purgeDetails = computed(() => {
 })
 
 const lockColumnsBadge = computed(() =>
-  engine.value === 'postgres' ? "Some columns aren't available for PostgreSQL" : '',
+  configuredEngine.value === 'postgres' ? "Some columns aren't available for PostgreSQL" : '',
 )
 
+// Binary logs are a MariaDB concept; the engine reports no status when it has none.
+const hasBinlogs = computed(() => Boolean(diagnostics.value?.binlog))
+
 // Only sites on this server can be scoped to; a SQLite site owns a file, not a
-// database on the selected engine.
+// database on the bench's engine.
 const siteOptions = computed(() => [
   { label: 'All databases', value: '' },
   ...sites.value
@@ -441,10 +423,6 @@ const siteOptions = computed(() => [
 ])
 
 const scopeBadge = computed(() => selectedSite.value)
-
-function engineLabel(value) {
-  return engineOptions.find((option) => option.value === value)?.label || value
-}
 
 const MAX_QUERY_LENGTH = 120
 
@@ -606,10 +584,11 @@ async function load() {
     if (result.error)
       throw new Error(apiErrorMessage(result, 'Could not load database diagnostics.'))
     diagnostics.value = result
-    configuredEngine.value = result.engine || 'mariadb'
-    engine.value = configuredEngine.value
+    configuredEngine.value = result.engine
     if (!result.supported) return
-    await Promise.all([loadSites(), loadSize(), loadProcesses(), loadLockWaits(), loadBinlogs()])
+    const panels = [loadSites(), loadSize(), loadProcesses(), loadLockWaits()]
+    if (hasBinlogs.value) panels.push(loadBinlogs())
+    await Promise.all(panels)
     if (autoRefreshLocks.value) startLockWaitsAutoRefresh()
   } catch (e) {
     error.value = e.message || 'Could not load database diagnostics.'

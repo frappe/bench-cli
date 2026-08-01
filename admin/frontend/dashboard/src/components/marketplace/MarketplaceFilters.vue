@@ -15,7 +15,7 @@
       <div class="flex gap-2">
         <Dropdown :options="worksWithMenu" placement="bottom-end">
           <template #default="{ open }">
-            <Button class="w-32 [&>.truncate]:flex-1 [&>.truncate]:text-left" :active="open">
+            <Button class="[&>.truncate]:flex-1 [&>.truncate]:text-left" :active="open">
               <template #suffix><span class="size-4 shrink-0 lucide-chevron-down" /></template>
               {{ worksWithLabel }}
             </Button>
@@ -29,26 +29,16 @@
       </div>
     </div>
 
-    <div class="flex flex-wrap gap-1.5 mt-3">
-      <button
-        v-for="pill in PILLS"
-        :key="pill"
-        type="button"
-        class="px-3 py-0.5 border rounded-full text-p-sm transition duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
-        :class="pill === pillModel
-          ? 'bg-surface-gray-3 border-outline-gray-2 text-ink-gray-9'
-          : 'border-outline-gray-2 text-ink-gray-6 hover:bg-surface-gray-1 hover:text-ink-gray-8'"
-        @click="pillModel = pill"
-      >
-        {{ pill }}
-      </button>
+    <!-- Scrolls rather than clips: TabButtons' rail is overflow-hidden and does not wrap. -->
+    <div class="mt-3 overflow-x-auto">
+      <TabButtons v-model="pillModel" :options="pillOptions" type="ghost" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, h } from 'vue'
-import { Button, Dropdown, FormControl } from 'frappe-ui'
+import { Button, Dropdown, FormControl, TabButtons } from 'frappe-ui'
 import LucideSearch from '~icons/lucide/search'
 import GithubMark from '@/components/icons/GithubMark.vue'
 import { PILLS } from '@/utils/marketplaceCategories'
@@ -61,6 +51,8 @@ defineEmits(['add-from-github'])
 const searchModel = defineModel('search', { type: String })
 const pillModel = defineModel('pill', { type: String })
 const worksWithModel = defineModel('worksWith', { type: String })
+
+const pillOptions = PILLS.map((pill) => ({ label: pill, value: pill }))
 
 function appLogo(option) {
   if (!option.logo_url) return null
@@ -82,6 +74,6 @@ const worksWithMenu = computed(() => [
 
 const worksWithLabel = computed(() => {
   const selected = props.worksWithOptions.find((option) => option.name === worksWithModel.value)
-  return selected ? `Works with ${selected.title}` : 'Works with'
+  return selected ? selected.title : 'Works with'
 })
 </script>

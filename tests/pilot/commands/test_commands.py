@@ -758,7 +758,7 @@ def test_bench_update_apps_passes_marketplace_pin_to_app_update(tmp_path: Path) 
     import subprocess
 
     from pilot.core.app import RevisionPin
-    from pilot.integrations.marketplace import Marketplace
+    from tests.pilot.marketplace_registry import publish
 
     bench = make_bench(tmp_path)
     bench.create_directories()
@@ -788,10 +788,8 @@ def test_bench_update_apps_passes_marketplace_pin_to_app_update(tmp_path: Path) 
         }
     ]
 
-    with (
-        patch.object(Marketplace, "registry", return_value=registry),
-        patch("pilot.core.app.App.update") as mock_update,
-    ):
+    publish(registry)
+    with patch("pilot.core.app.App.update") as mock_update:
         bench._update_apps(None, lambda message: None)
 
     mock_update.assert_called_once_with(pin=RevisionPin(kind="commit", ref=published))
@@ -801,7 +799,7 @@ def test_bench_update_apps_skips_a_marketplace_app_with_nothing_newer(tmp_path: 
     """Pulling the branch for a registry app would install unpublished code."""
     import subprocess
 
-    from pilot.integrations.marketplace import Marketplace
+    from tests.pilot.marketplace_registry import publish
 
     bench = make_bench(tmp_path)
     bench.create_directories()
@@ -826,10 +824,8 @@ def test_bench_update_apps_skips_a_marketplace_app_with_nothing_newer(tmp_path: 
         }
     ]
 
-    with (
-        patch.object(Marketplace, "registry", return_value=registry),
-        patch("pilot.core.app.App.update") as mock_update,
-    ):
+    publish(registry)
+    with patch("pilot.core.app.App.update") as mock_update:
         bench._update_apps(None, lambda message: None)
 
     mock_update.assert_not_called()
@@ -838,7 +834,7 @@ def test_bench_update_apps_skips_a_marketplace_app_with_nothing_newer(tmp_path: 
 def test_bench_update_apps_updates_an_app_outside_the_registry_branch_wide(tmp_path: Path) -> None:
     import subprocess
 
-    from pilot.integrations.marketplace import Marketplace
+    from tests.pilot.marketplace_registry import publish
 
     bench = make_bench(tmp_path)
     bench.create_directories()
@@ -847,10 +843,8 @@ def test_bench_update_apps_updates_an_app_outside_the_registry_branch_wide(tmp_p
     _write_installable_app(app_dir, "private_app")
     subprocess.run(["git", "init", "-q", "-b", "main", str(app_dir)], check=True)
 
-    with (
-        patch.object(Marketplace, "registry", return_value=[]),
-        patch("pilot.core.app.App.update") as mock_update,
-    ):
+    publish([])
+    with patch("pilot.core.app.App.update") as mock_update:
         bench._update_apps(None, lambda message: None)
 
     mock_update.assert_called_once_with(pin=None)
@@ -860,7 +854,7 @@ def test_bench_update_apps_uses_captured_target_for_unpinned_app(tmp_path: Path)
     import subprocess
 
     from pilot.core.app import RevisionPin
-    from pilot.integrations.marketplace import Marketplace
+    from tests.pilot.marketplace_registry import publish
 
     bench = make_bench(tmp_path)
     bench.create_directories()
@@ -869,15 +863,12 @@ def test_bench_update_apps_uses_captured_target_for_unpinned_app(tmp_path: Path)
     _write_installable_app(app_dir, "helpdesk")
     subprocess.run(["git", "init", "-q", str(app_dir)], check=True)
 
-    with (
-        patch.object(Marketplace, "registry", return_value=[]) as mock_registry,
-        patch("pilot.core.app.App.update") as mock_update,
-    ):
+    publish([])
+    with patch("pilot.core.app.App.update") as mock_update:
         # A captured pin is used exactly as given - never re-resolved live.
         bench._update_apps(None, lambda message: None, {"helpdesk": RevisionPin(kind="commit", ref="deadbeef")})
 
     mock_update.assert_called_once_with(pin=RevisionPin(kind="commit", ref="deadbeef"))
-    mock_registry.assert_not_called()
 
 
 def test_drop_site_removes_site_from_bench_toml(tmp_path: Path) -> None:

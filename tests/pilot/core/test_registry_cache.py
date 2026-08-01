@@ -219,14 +219,33 @@ def publish(remote: Path, index: list | dict, releases: dict | None = RELEASES) 
     _git(remote, "commit", "-q", "--allow-empty", "-m", "publish")
 
 
-def test_load_inlines_releases_per_app(tmp_path: Path, _point_at_local_remote) -> None:
+def test_load_returns_the_index_without_reading_release_files(
+    tmp_path: Path, _point_at_local_remote
+) -> None:
     publish(_point_at_local_remote, INDEX)
     cache = make_cache(tmp_path)
 
     entries = cache.load()
 
     assert entries[0]["name"] == "helpdesk"
-    assert entries[0]["releases"] == RELEASES["releases"]
+    assert "releases" not in entries[0]
+
+
+def test_releases_reads_one_apps_release_file(tmp_path: Path, _point_at_local_remote) -> None:
+    publish(_point_at_local_remote, INDEX)
+    cache = make_cache(tmp_path)
+    cache.load()
+
+    assert cache.releases("helpdesk") == RELEASES["releases"]
+
+
+def test_releases_rejects_traversal_in_app_name(tmp_path: Path, _point_at_local_remote) -> None:
+    publish(_point_at_local_remote, INDEX)
+    cache = make_cache(tmp_path)
+    cache.load()
+
+    with pytest.raises(RegistryUnavailableError, match="is not a marketplace app name"):
+        cache.releases("../../etc/passwd")
 
 
 def test_load_rejects_releases_pointer_that_is_not_the_apps_path(
@@ -247,20 +266,24 @@ def test_load_rejects_traversal_in_app_name(tmp_path: Path, _point_at_local_remo
         make_cache(tmp_path).load()
 
 
-def test_load_raises_when_release_file_is_missing(tmp_path: Path, _point_at_local_remote) -> None:
+def test_releases_raises_when_release_file_is_missing(tmp_path: Path, _point_at_local_remote) -> None:
     publish(_point_at_local_remote, INDEX, releases=None)
+    cache = make_cache(tmp_path)
+    cache.load()
 
     with pytest.raises(RegistryUnavailableError, match="Could not read the marketplace registry"):
-        make_cache(tmp_path).load()
+        cache.releases("helpdesk")
 
 
-def test_load_raises_when_release_file_has_no_releases_list(
+def test_releases_raises_when_release_file_has_no_releases_list(
     tmp_path: Path, _point_at_local_remote
 ) -> None:
     publish(_point_at_local_remote, INDEX, releases={"name": "helpdesk"})
+    cache = make_cache(tmp_path)
+    cache.load()
 
     with pytest.raises(RegistryUnavailableError, match="does not hold a 'releases' list"):
-        make_cache(tmp_path).load()
+        cache.releases("helpdesk")
 
 
 def test_load_raises_when_index_is_not_a_list(tmp_path: Path, _point_at_local_remote) -> None:

@@ -6,22 +6,22 @@
           <div v-if="subject" class="flex items-center gap-3">
             <span
               v-if="subject.icon"
-              class="place-items-center grid bg-surface-gray-2 rounded-[10px] size-11 shrink-0"
+              class="place-items-center grid bg-surface-gray-2 rounded-[10px] size-9 shrink-0"
             >
-              <span class="size-5 text-ink-gray-7" :class="subject.icon" />
+              <span class="size-4 text-ink-gray-7" :class="subject.icon" />
             </span>
             <AppIcon
               v-else
               :name="subject.name || subject.label"
               :label="subject.label"
               :logo="subject.logo || ''"
-              class="rounded-[10px] size-11"
-              initial-class="text-lg"
+              class="rounded-[10px] size-9"
+              initial-class="text-base"
             />
             <div class="min-w-0">
               <div class="flex items-center gap-1.5">
                 <p class="font-medium text-ink-gray-8 text-base truncate">{{ subject.label }}</p>
-                <span v-if="subject.badge" class="text-ink-gray-5 text-p-xs shrink-0">
+                <span v-if="subject.badge" class="text-ink-gray-5 text-xs shrink-0">
                   {{ subject.badge }}
                 </span>
               </div>
@@ -31,8 +31,6 @@
             </div>
           </div>
         </slot>
-
-        <div v-if="$slots.subject || subject" class="border-outline-gray-2 border-t" />
 
         <slot />
 

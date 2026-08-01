@@ -9,6 +9,7 @@ import pytest
 
 from pilot.config import AppConfig
 from pilot.core.app import App
+from pilot.core.app.repository import AppRepository
 from pilot.exceptions import AppValidationError, BenchError
 from tests.pilot.commands.test_commands import make_bench
 
@@ -25,9 +26,12 @@ def _make_app(bench, name: str) -> App:
 
 
 def _cloner(module: str, seen: list[Path]):
-    def clone(self: App) -> None:
-        seen.append(self.path)
-        _write_app_tree(self.path, module)
+    """Stand in for the git clone, one level below App.clone so its staging
+    logic still runs."""
+
+    def clone(self: AppRepository) -> None:
+        seen.append(self.app.path)
+        _write_app_tree(self.app.path, module)
 
     return clone
 
@@ -38,7 +42,7 @@ def test_install_clones_into_staging_then_moves_into_apps(tmp_path: Path) -> Non
     cloned_at: list[Path] = []
 
     with (
-        patch.object(App, "clone", _cloner("myapp", cloned_at)),
+        patch.object(AppRepository, "clone", _cloner("myapp", cloned_at)),
         patch.object(App, "validate"),
         patch.object(App, "_install_into_environment"),
         patch.object(App, "_build_assets_via_env_manager"),
@@ -57,7 +61,7 @@ def test_install_leaves_apps_empty_when_validation_fails(tmp_path: Path) -> None
     bench.create_directories()
 
     with (
-        patch.object(App, "clone", _cloner("myapp", [])),
+        patch.object(AppRepository, "clone", _cloner("myapp", [])),
         patch.object(App, "validate", side_effect=AppValidationError("broken app")),
         pytest.raises(AppValidationError, match="broken app"),
     ):
@@ -72,7 +76,7 @@ def test_install_moves_the_app_under_its_importable_name(tmp_path: Path) -> None
     bench.create_directories()
 
     with (
-        patch.object(App, "clone", _cloner("india_compliance", [])),
+        patch.object(AppRepository, "clone", _cloner("india_compliance", [])),
         patch.object(App, "validate"),
         patch.object(App, "_install_into_environment"),
         patch.object(App, "_build_assets_via_env_manager"),
@@ -91,12 +95,12 @@ def test_install_stages_an_already_cloned_app_instead_of_re_cloning(tmp_path: Pa
     bench.create_directories()
     _write_app_tree(bench.apps_path / "myapp", "myapp")
 
-    def unexpected_clone(self: App) -> None:
+    def unexpected_clone(self: AppRepository) -> None:
         raise AssertionError("an app already in apps/ must not be re-cloned")
 
     validated_at = []
     with (
-        patch.object(App, "clone", unexpected_clone),
+        patch.object(AppRepository, "clone", unexpected_clone),
         patch.object(App, "validate", lambda self: validated_at.append(self.path)),
         patch.object(App, "_install_into_environment"),
         patch.object(App, "_build_assets_via_env_manager"),
@@ -136,7 +140,7 @@ def test_install_discards_a_staged_clone_left_by_an_interrupted_run(tmp_path: Pa
     (stale / "leftover.txt").write_text("from the run that died\n")
 
     with (
-        patch.object(App, "clone", _cloner("myapp", [])),
+        patch.object(AppRepository, "clone", _cloner("myapp", [])),
         patch.object(App, "validate"),
         patch.object(App, "_install_into_environment"),
         patch.object(App, "_build_assets_via_env_manager"),
@@ -154,7 +158,7 @@ def test_install_undoes_itself_when_the_asset_build_fails(tmp_path: Path) -> Non
     (bench.sites_path / "apps.txt").write_text("frappe\n")
 
     with (
-        patch.object(App, "clone", _cloner("myapp", [])),
+        patch.object(AppRepository, "clone", _cloner("myapp", [])),
         patch.object(App, "validate"),
         patch.object(App, "_install_into_environment"),
         patch.object(App, "_pip_uninstall") as mock_uninstall,
@@ -192,7 +196,7 @@ def test_install_records_the_branch_only_once_it_succeeds(tmp_path: Path) -> Non
     bench.config.write(bench.path)
 
     with (
-        patch.object(App, "clone", _cloner("myapp", [])),
+        patch.object(AppRepository, "clone", _cloner("myapp", [])),
         patch.object(App, "validate"),
         patch.object(App, "_install_into_environment"),
         patch.object(App, "_pip_uninstall"),

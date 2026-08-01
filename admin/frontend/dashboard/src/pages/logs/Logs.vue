@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full">
+  <div class="flex flex-col h-[calc(100vh-5rem)]">
     <!-- Header: hidden on mobile once a log is open, to leave more room for the viewer -->
     <div class="mb-4 shrink-0" :class="selectedFile ? 'hidden md:block' : ''">
       <h1 class="font-semibold text-ink-gray-9 text-xl">Logs</h1>

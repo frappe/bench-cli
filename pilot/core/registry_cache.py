@@ -42,17 +42,31 @@ class RegistryCache:
         return self._cli_root / "system" / "registry-cache.last_checked"
 
     def load(self) -> list[dict]:
-        """Index entries with each app's releases inlined from apps/<name>.json."""
+        """The app index, without releases - those are read per app by `releases`,
+        so the index stays cheap however many releases the registry grows."""
         self.ensure_fresh()
         entries = self._read_json(self.index_path)
         if not isinstance(entries, list):
             raise RegistryUnavailableError(f"The marketplace index is not a list of apps: {self.index_path}")
         for entry in entries:
-            entry["releases"] = self._read_releases(entry)
+            self._reject_foreign_pointer(entry)
+            entry.pop("releases")
         return entries
 
-    def _read_releases(self, entry: dict) -> list[dict]:
-        """Releases for one index entry, rejecting any pointer other than apps/<name>.json."""
+    def releases(self, app_name: str) -> list[dict]:
+        """Releases for one indexed app. Assumes `load` has already run, so it does
+        not re-check freshness - that check shells out to git."""
+        if not _APP_NAME.fullmatch(app_name):
+            raise RegistryUnavailableError(f"{app_name!r} is not a marketplace app name.")
+        payload = self._read_json(self.path / "apps" / f"{app_name}.json")
+        releases = payload.get("releases") if isinstance(payload, dict) else None
+        if not isinstance(releases, list):
+            raise RegistryUnavailableError(f"apps/{app_name}.json does not hold a 'releases' list.")
+        return releases
+
+    @staticmethod
+    def _reject_foreign_pointer(entry: dict) -> None:
+        """An entry may only point 'releases' at its own apps/<name>.json."""
         name = entry.get("name") or ""
         pointer = entry.get("releases")
         expected = f"apps/{name}.json"
@@ -61,11 +75,6 @@ class RegistryCache:
                 f"The marketplace entry {name or entry!r} must point 'releases' at "
                 f"{expected!r}, not {pointer!r} - the registry cache is unusable."
             )
-        payload = self._read_json(self.path / "apps" / f"{name}.json")
-        releases = payload.get("releases") if isinstance(payload, dict) else None
-        if not isinstance(releases, list):
-            raise RegistryUnavailableError(f"{expected} does not hold a 'releases' list.")
-        return releases
 
     def _read_json(self, path: Path):
         try:

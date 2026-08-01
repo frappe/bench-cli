@@ -329,25 +329,24 @@ SAMPLE_REGISTRY = [
 
 
 def make_marketplace(frappe_version: str, registry: list | None = None) -> Marketplace:
+    """A Marketplace over `registry`. The stub stays in place after this returns,
+    so releases are still readable when a test asks for them."""
+    from copy import deepcopy
+
+    from tests.pilot.marketplace_registry import publish
+
     bench = MagicMock()
     bench.env_path = Path("/fake/env")
 
-    from copy import deepcopy
-
-    with (
-        patch(
-            "pilot.integrations.marketplace.Marketplace.get_current_frappe_version",
-            return_value=frappe_version,
-        ),
-        patch(
-            "pilot.integrations.marketplace.Marketplace._load_registry",
-            return_value=deepcopy(registry or SAMPLE_REGISTRY),
-        ),
+    publish(deepcopy(registry or SAMPLE_REGISTRY))
+    with patch(
+        "pilot.integrations.marketplace.Marketplace.get_current_frappe_version",
+        return_value=frappe_version,
     ):
         return Marketplace(bench)
 
 
-def test_parse_registry_tolerates_bad_frappe_core():
+def test_read_all_apps_tolerates_bad_frappe_core():
     registry = [
         {
             "name": "null_spec_app",
@@ -560,7 +559,7 @@ def test_read_all_apps_keeps_nightly_out_of_dependency_lookup_when_stable_fits()
     assert [r.channel for r in apps[0]._registry["helpdesk"]] == ["stable"]
 
 
-def test_parse_registry_sorts_releases_newest_first():
+def test_releases_are_served_newest_first():
     registry = [
         {
             "name": "payments",
@@ -572,7 +571,7 @@ def test_parse_registry_sorts_releases_newest_first():
         }
     ]
     mp = make_marketplace("15.0.0", registry)
-    assert [r["version"] for r in mp._registry[0]["releases"]] == ["2.0.0", "1.0.0"]
+    assert [r["version"] for r in mp.releases("payments")] == ["2.0.0", "1.0.0"]
 
 
 def test_read_all_apps_no_releases_produces_non_installable():

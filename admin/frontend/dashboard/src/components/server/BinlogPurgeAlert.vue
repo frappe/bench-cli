@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Alert, Button, Dialog, ErrorMessage, toast } from 'frappe-ui'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { apiErrorMessage } from '@/api/client'
 import { databaseApi } from '@/api/database'
 import { formatBytes } from '@/utils/format'
@@ -17,9 +17,8 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{ purged: [] }>()
 
-const SHOW_THRESHOLD_BYTES = 1024 ** 3
-
-const show = computed(() => props.bytes > SHOW_THRESHOLD_BYTES)
+const showThresholdBytes = 1024 ** 3
+const minFilesToShow = 2
 
 const dialogOpen = ref(false)
 const loading = ref(false)
@@ -27,6 +26,14 @@ const purging = ref(false)
 const loadError = ref('')
 const purgeError = ref('')
 const binlogs = ref<BinlogFile[]>([])
+const binlogsLoaded = ref(false)
+
+const show = computed(
+  () =>
+    props.bytes > showThresholdBytes &&
+    binlogsLoaded.value &&
+    binlogs.value.length > minFilesToShow,
+)
 
 // Files come oldest-first; the last one is the active file PURGE always keeps.
 const keepFile = computed(() => binlogs.value.at(-1) ?? null)
@@ -35,10 +42,8 @@ const freedBytes = computed(() =>
 )
 const canPurge = computed(() => binlogs.value.length > 1)
 
-const openDialog = async () => {
-  dialogOpen.value = true
+const loadBinlogs = async () => {
   loadError.value = ''
-  purgeError.value = ''
   loading.value = true
 
   try {
@@ -46,12 +51,21 @@ const openDialog = async () => {
     if (result?.error) throw new Error(apiErrorMessage(result, 'Could not load binary logs.'))
 
     binlogs.value = Array.isArray(result) ? result : []
+    binlogsLoaded.value = true
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : 'Could not load binary logs.'
   } finally {
     loading.value = false
   }
 }
+
+const openDialog = () => {
+  dialogOpen.value = true
+  purgeError.value = ''
+  loadBinlogs()
+}
+
+onMounted(loadBinlogs)
 
 const purge = async () => {
   if (!keepFile.value) return
@@ -75,7 +89,12 @@ const purge = async () => {
 </script>
 
 <template>
-  <Alert title="Binary logs are taking up space" :dismissible="false" class="mt-4 !bg-surface-blue-1">
+  <Alert
+    v-if="show"
+    title="Binary logs are taking up space"
+    :dismissible="false"
+    class="mt-4 !bg-surface-blue-1"
+  >
     <template #description>
       <p class="text-ink-gray-6 prose-sm">
         Binary logs are using {{ formatBytes(bytes) }}. Purge older logs to free up space.

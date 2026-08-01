@@ -6,6 +6,18 @@ from pathlib import Path
 import pytest
 
 from admin.backend.providers.sites import SiteProvider
+from pilot.core.database.base import QueryResult
+
+
+class _FakeDatabase:
+    def __init__(self, rows: list[list]) -> None:
+        self._rows = rows
+
+    def quote_identifier(self, name: str) -> str:
+        return f'"{name}"'
+
+    def execute(self, query: str, read_only: bool = True) -> QueryResult:
+        return QueryResult(columns=["value"], rows=self._rows, duration_ms=0.0)
 
 
 def _make_site(sites: Path, name: str, config: dict) -> None:
@@ -48,3 +60,29 @@ def test_site_provider_defaults_setup_complete_false_without_db_access(tmp_path:
     info = SiteProvider(tmp_path).get_one("site.localhost")
 
     assert info.setup_complete is False
+
+
+def test_site_provider_reads_setup_complete_for_postgres_site(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sites = tmp_path / "sites"
+    _make_site(
+        sites,
+        "pg.localhost",
+        {
+            "db_type": "postgres",
+            "db_name": "site_db",
+            "db_user": "site_db",
+            "db_password": "secret",
+            "db_port": 5432,
+            "installed_apps": ["frappe"],
+        },
+    )
+    monkeypatch.setattr(
+        "pilot.core.site.config.make_site_database",
+        lambda *args, **kwargs: _FakeDatabase([["1"]]),
+    )
+
+    info = SiteProvider(tmp_path).get_one("pg.localhost")
+
+    assert info.setup_complete is True
