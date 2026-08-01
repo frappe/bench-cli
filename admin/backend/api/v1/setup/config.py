@@ -11,6 +11,35 @@ from pilot.internal.validators import validate_branch_name, validate_repo_url
 _PASSWORD_KEYS = ("admin_password", "mariadb_password", "postgres_password")
 _DB_ENGINES = ("mariadb", "postgres")
 
+# Everything the setup wizard is allowed to write. It runs before authentication
+# (see allow_during_setup), so any other bench.toml key - admin.domain,
+# admin.allow_bench_management, admin.jwks_url, production settings, etc. - must
+# never reach write_flat from this endpoint.
+_ALLOWED_KEYS = frozenset(
+    {
+        "admin_password",
+        "app_repo",
+        "app_branch",
+        "db_type",
+        "db_mode",
+        "mariadb_admin_user",
+        "mariadb_existing",
+        "mariadb_host",
+        "mariadb_password",
+        "mariadb_port",
+        "postgres_admin_user",
+        "postgres_existing",
+        "postgres_host",
+        "postgres_password",
+        "postgres_port",
+    }
+)
+
+
+def filter_wizard_keys(data: dict) -> dict:
+    """Drop any key outside the wizard's own configuration schema."""
+    return {key: value for key, value in data.items() if key in _ALLOWED_KEYS}
+
 
 def validate_configuration(data: dict) -> str | None:
     if error := _validate_field_types(data):

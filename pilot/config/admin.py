@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass, field
 
+from pilot import is_dev_build
 from pilot.exceptions import ConfigError
 
 _HOSTNAME_PATTERN = re.compile(
@@ -20,7 +21,9 @@ class AdminConfig:
     jwks_audience: str = ""
     domain: str = ""
     tls: bool = False
-    allow_bench_management: bool = True
+    # Off by default outside a --dev install: bench management exposes powerful,
+    # cross-bench operations and should be an explicit opt-in in production.
+    allow_bench_management: bool = field(default_factory=lambda: is_dev_build)
     # Break-glass codes for when no enrolled device is available. Stored in the clear so
     # an operator with server access can still read them; the API returns them only when
     # they are issued, never on demand.
@@ -38,7 +41,7 @@ class AdminConfig:
             jwks_audience=data.get("jwks_audience", ""),
             domain=data.get("domain", ""),
             tls=data.get("tls", False),
-            allow_bench_management=data.get("allow_bench_management", True),
+            allow_bench_management=data.get("allow_bench_management", is_dev_build),
             recovery_codes=list(data.get("recovery_codes", [])),
         )
 

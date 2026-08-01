@@ -420,10 +420,20 @@ def test_admin_tls_roundtrip() -> None:
     assert "tls = false" in config.dumps()
 
 
-def test_admin_allow_bench_management_defaults_to_true() -> None:
+def test_admin_allow_bench_management_defaults_to_true_in_dev_build(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("pilot.config.admin.is_dev_build", True)
     config = load_from_dict(copy.deepcopy(MINIMAL_VALID_DATA))
     assert config.admin.allow_bench_management is True
     assert "allow_bench_management = true" in config.dumps()
+
+
+def test_admin_allow_bench_management_defaults_to_false_outside_dev_build(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("pilot.config.admin.is_dev_build", False)
+    config = load_from_dict(copy.deepcopy(MINIMAL_VALID_DATA))
+    assert config.admin.allow_bench_management is False
+    assert "allow_bench_management = false" in config.dumps()
 
 
 def test_admin_allow_bench_management_can_be_disabled() -> None:
@@ -432,6 +442,26 @@ def test_admin_allow_bench_management_can_be_disabled() -> None:
     config = load_from_dict(data)
     assert config.admin.allow_bench_management is False
     assert "allow_bench_management = false" in config.dumps()
+
+
+def test_llm_api_base_accepts_a_private_hostname() -> None:
+    from pilot.config.llm import LLMConfig
+
+    LLMConfig(provider="self-hosted", api_base="http://vllm:8000/v1").validate()
+
+
+def test_llm_api_base_rejects_loopback() -> None:
+    from pilot.config.llm import LLMConfig
+
+    with pytest.raises(ConfigError, match=r"llm\.api_base"):
+        LLMConfig(provider="self-hosted", api_base="http://127.0.0.1:8000/v1").validate()
+
+
+def test_llm_api_base_rejects_cloud_metadata_address() -> None:
+    from pilot.config.llm import LLMConfig
+
+    with pytest.raises(ConfigError, match=r"llm\.api_base"):
+        LLMConfig(provider="self-hosted", api_base="http://169.254.169.254/v1").validate()
 
 
 def test_admin_internal_port_is_port_plus_one() -> None:

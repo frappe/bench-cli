@@ -14,6 +14,7 @@ from pilot.integrations.llm.base import LLMIntegration
 from pilot.integrations.llm.frappe_llm import FrappeLLMIntegration
 from pilot.integrations.llm.lite import LiteLLMIntegration
 from pilot.integrations.llm.self_hosted import SelfHostedIntegration
+from pilot.internal.validators import validate_public_url
 
 if TYPE_CHECKING:
     from pilot.config.llm import LLMConfig
@@ -55,6 +56,8 @@ def models_for(provider: str, api_key: str = "", api_base: str = "") -> list[str
     """Selectable models for a provider (empty means free-text entry). Providers
     with `models_need_api_key` list models from their own API, so they need the key,
     and an `api_base` overrides wherever that provider defaults to."""
+    if error := validate_public_url(api_base):
+        raise ValueError(f"api_base: {error}")
     return _integration_for(provider).get_models(provider, api_key, api_base)
 
 

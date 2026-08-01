@@ -290,6 +290,11 @@ def test_registry_passes_key_through(monkeypatch: pytest.MonkeyPatch, fake_litel
     assert registry.models_for("frappe-llm", "sk-key", _FRAPPE_BASE) == ["qwen3.6-27b-fp8"]
 
 
+def test_registry_rejects_an_api_base_pointing_at_a_private_address() -> None:
+    with pytest.raises(ValueError, match="api_base"):
+        registry.models_for("frappe-llm", "sk-key", "http://169.254.169.254/v1")
+
+
 # -- response caching --------------------------------------------------------
 
 

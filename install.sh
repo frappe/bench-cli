@@ -32,8 +32,6 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --user) BENCH_USER="$2"; shift 2 ;;
         --user=*) BENCH_USER="${1#*=}"; shift ;;
-        --sudo-password|--sudo-pass) SUDO_PASS="$2"; shift 2 ;;
-        --sudo-password=*|--sudo-pass=*) SUDO_PASS="${1#*=}"; shift ;;
         --dev) DEV_MODE=1; shift ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac

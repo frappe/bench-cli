@@ -90,6 +90,35 @@ def test_configuration_update_is_sanitized_and_preserves_unknown_keys(
     assert BenchConfig.read_raw(tmp_path)["plugin"] == {"custom_key": "custom-value"}
 
 
+def test_configuration_update_ignores_keys_outside_the_wizard_schema(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The wizard runs before authentication, so it must only ever be able to
+    write the handful of fields it actually asks for - not arbitrary bench.toml
+    settings like admin.allow_bench_management or admin.jwks_url."""
+    monkeypatch.setattr("pilot.config.admin.is_dev_build", True)
+    client = setup_client(tmp_path)
+
+    response = client.put(
+        "/api/v1/setup/configuration",
+        json={
+            "admin_password": "admin-secret",
+            "mariadb_password": "database-secret",
+            "admin_allow_bench_management": False,
+            "admin_domain": "attacker.example",
+            "admin_jwks_url": "http://169.254.169.254/jwks.json",
+            "production_process_manager": "supervisor",
+        },
+    )
+
+    assert response.status_code == 200
+    config = BenchConfig.read(tmp_path)
+    assert config.admin.allow_bench_management is True
+    assert config.admin.domain == ""
+    assert config.admin.jwks_url == ""
+    assert config.production.process_manager == ""
+
+
 def test_authenticated_reload_can_save_without_resending_secrets(tmp_path: Path) -> None:
     client = setup_client(tmp_path)
     assert save_configuration(client).status_code == 200

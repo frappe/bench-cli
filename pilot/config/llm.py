@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from pilot.exceptions import ConfigError
+from pilot.internal.validators import validate_public_url
 
 
 @dataclass
@@ -22,3 +23,5 @@ class LLMConfig:
     def validate(self) -> None:
         if self.max_tokens <= 0:
             raise ConfigError("llm.max_tokens must be a positive integer.")
+        if error := validate_public_url(self.api_base):
+            raise ConfigError(f"llm.api_base: {error}")

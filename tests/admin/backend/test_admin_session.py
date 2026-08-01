@@ -172,9 +172,20 @@ def test_bootstrap_reports_postgres_engine(tmp_path: Path) -> None:
     assert app.test_client().get("/api/v1/bootstrap").get_json()["db_type"] == "postgres"
 
 
-def test_bootstrap_reports_allow_bench_management_default_true(tmp_path: Path) -> None:
+def test_bootstrap_reports_allow_bench_management_default_true_in_dev_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("pilot.config.admin.is_dev_build", True)
     client = _client(tmp_path)
     assert client.get("/api/v1/bootstrap").get_json()["allow_bench_management"] is True
+
+
+def test_bootstrap_reports_allow_bench_management_default_false_outside_dev_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("pilot.config.admin.is_dev_build", False)
+    client = _client(tmp_path)
+    assert client.get("/api/v1/bootstrap").get_json()["allow_bench_management"] is False
 
 
 def test_bootstrap_reports_allow_bench_management_when_disabled(tmp_path: Path) -> None:

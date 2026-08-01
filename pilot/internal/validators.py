@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ipaddress
 import re
+import urllib.parse
 
 _APP_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_\-]*$")
 _BRANCH_RE = re.compile(r"^[A-Za-z0-9._/\-]+$")
@@ -76,6 +78,31 @@ def validate_admin_password(password: str) -> str | None:
         return "Password must contain at least one number."
     if not _SYMBOL_RE.search(password):
         return "Password must contain at least one symbol."
+    return None
+
+
+def validate_public_url(url: str) -> str | None:
+    """Reject a non-http(s) URL or one targeting a literal loopback, link-local,
+    or reserved address (SSRF into cloud metadata or internal services). A
+    private DNS name (e.g. a docker-network service) still passes, since
+    resolving it here would make config validation depend on the network."""
+    if not url:
+        return None
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme not in ("http", "https"):
+        return "URL must start with http:// or https://."
+    hostname = parsed.hostname
+    if not hostname:
+        return "URL must include a host."
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        return None
+    # ponytail: literal-IP check only - a DNS name that resolves to one of these
+    # addresses at request time still gets through. Validate the resolved
+    # address at the HTTP client too (or pin it) if that gap matters.
+    if address.is_loopback or address.is_link_local or address.is_multicast or address.is_reserved or address.is_unspecified:
+        return f"URL must not point at {address} (a private or reserved network address)."
     return None
 
 

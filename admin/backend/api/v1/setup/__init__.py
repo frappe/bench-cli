@@ -7,6 +7,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 from admin.backend.api.responses import accepted_task_response, error_response, no_content_response
 from admin.backend.api.v1.setup.config import (
     apply_existing_local_database,
+    filter_wizard_keys,
     read_defaults,
     validate_configuration,
 )
@@ -60,7 +61,7 @@ def update_configuration():
         return error_response("malformed_request", "Expected a JSON object.", 400)
 
     with exclusive_file_lock(bench_root / ".setup-configuration"):
-        return _update_configuration(bench_root, data)
+        return _update_configuration(bench_root, filter_wizard_keys(data))
 
 
 def _update_configuration(bench_root: Path, data: dict):
