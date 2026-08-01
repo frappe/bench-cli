@@ -1,15 +1,12 @@
 <template>
   <Teleport defer to="#header-actions">
-    <div class="flex items-center gap-2">
-      <FormControl
-        v-if="siteOptions.length > 1"
-        type="select"
-        v-model="selectedSite"
-        :options="siteOptions"
-        class="w-32 sm:w-44"
-      />
-      <Badge v-if="diagnostics" :label="engineLabel(configuredEngine)" theme="gray" size="lg" />
-    </div>
+    <FormControl
+      v-if="siteOptions.length > 1"
+      type="select"
+      v-model="selectedSite"
+      :options="siteOptions"
+      class="w-32 sm:w-44"
+    />
   </Teleport>
 
   <div class="flex flex-col gap-4">
@@ -236,7 +233,6 @@
 
 <script setup>
 import {
-  Badge,
   Button,
   Checkbox,
   Dialog,
@@ -296,12 +292,6 @@ const binlogColumns = [
   { label: 'Size', key: 'size', align: 'right', width: 1 },
   { label: '', key: 'actions', align: 'right', width: '3rem' },
 ]
-
-const ENGINE_LABELS = {
-  mariadb: 'MariaDB',
-  postgres: 'PostgreSQL',
-  sqlite: 'SQLite',
-}
 
 const route = useRoute()
 
@@ -433,10 +423,6 @@ const siteOptions = computed(() => [
 ])
 
 const scopeBadge = computed(() => selectedSite.value)
-
-function engineLabel(value) {
-  return ENGINE_LABELS[value] || value
-}
 
 const MAX_QUERY_LENGTH = 120
 
