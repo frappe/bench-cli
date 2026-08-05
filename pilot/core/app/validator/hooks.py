@@ -121,7 +121,8 @@ class HooksCheck:
             return []  # RepoStructureCheck owns this when it runs; updates skip it
         tree = ast.parse(hooks_path.read_text())
 
-        blocking, advisory = [], []
+        blocking: list[str] = []
+        advisory: list[str] = []
         for name, value in _hook_assignments(tree):
             if name in _DICT_HOOKS and isinstance(value, _NOT_A_DICT):
                 blocking.append(f"line {value.lineno}: {name} must be a dict")
