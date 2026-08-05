@@ -427,8 +427,12 @@ def test_app_install_checks_out_the_pinned_commit_before_validating(tmp_path: Pa
     app = App(AppConfig(name="myapp", repo=str(remote), branch="master"), bench)
     seen_at_validation = {}
 
+    def record_validation(self: App) -> list[str]:
+        seen_at_validation.update(sha=self.installed_hash)
+        return []
+
     with (
-        patch.object(App, "validate", lambda self: seen_at_validation.update(sha=self.installed_hash)),
+        patch.object(App, "validate", record_validation),
         patch.object(App, "_install_into_environment"),
         patch.object(App, "_build_assets_via_env_manager"),
     ):

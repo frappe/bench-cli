@@ -11,9 +11,13 @@ if typing.TYPE_CHECKING:
 
 
 class ValidationCheck(typing.Protocol):
-    """A single check run against a cloned app before it's installed."""
+    """A single check run against a cloned app before it's installed.
 
-    def run(self, app: "App") -> None: ...
+    Raises AppValidationError to block; returns any non-blocking findings as
+    warnings for the caller to surface.
+    """
+
+    def run(self, app: "App") -> list[str] | None: ...
 
 
 def module_path(app: "App") -> Path:

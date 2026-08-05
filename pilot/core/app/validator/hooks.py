@@ -35,8 +35,7 @@ _DICT_HOOKS = frozenset(
     ]
 )
 
-# Hooks whose leaf strings are dotted paths frappe resolves with get_attr(). A
-# stale path fails when the hook fires - often mid-migrate.
+# Hooks whose leaf strings are dotted paths frappe resolves with get_attr().
 _PATH_HOOKS = frozenset(
     [
         "additional_timeline_content",
@@ -82,6 +81,23 @@ _PATH_HOOKS = frozenset(
     ]
 )
 
+# The subset frappe resolves eagerly during install, migrate, build, or uninstall,
+# with a bare get_attr() and no guard - a stale path there aborts the operation
+# pilot is running. Every other path hook resolves lazily on a runtime action, and
+# frappe skips a scheduler_events path it cannot import instead of failing migrate.
+_BLOCKING_PATH_HOOKS = frozenset(
+    [
+        "after_build",
+        "after_install",
+        "after_migrate",
+        "after_sync",
+        "after_uninstall",
+        "before_install",
+        "before_migrate",
+        "before_uninstall",
+    ]
+)
+
 
 # Shapes a dict hook definitely isn't. A name or a call may still evaluate to a
 # dict at import time, so those are left alone rather than guessed at.
@@ -93,33 +109,44 @@ class HooksCheck:
 
     Only documented hooks are inspected; app-specific hook names are left alone.
     SyntaxCheck guarantees hooks.py parses first.
+
+    A stale path only blocks when frappe would abort on it. The rest are returned
+    as warnings: refusing to update over them would strand a bench on a defect in
+    an upstream app the operator cannot patch.
     """
 
-    def run(self, app: "App") -> None:
+    def run(self, app: "App") -> list[str]:
         hooks_path = module_path(app) / "hooks.py"
         if not hooks_path.is_file():
-            return  # RepoStructureCheck owns this when it runs; updates skip it
+            return []  # RepoStructureCheck owns this when it runs; updates skip it
         tree = ast.parse(hooks_path.read_text())
 
-        problems = []
+        blocking, advisory = [], []
         for name, value in _hook_assignments(tree):
             if name in _DICT_HOOKS and isinstance(value, _NOT_A_DICT):
-                problems.append(f"line {value.lineno}: {name} must be a dict")
+                blocking.append(f"line {value.lineno}: {name} must be a dict")
                 continue
             if name not in _PATH_HOOKS:
                 continue
             for path, lineno in _string_values(value):
                 error = _path_error(app, path)
                 if error:
-                    problems.append(f"line {lineno}: {name} -> {path}: {error}")
+                    problem = f"line {lineno}: {name} -> {path}: {error}"
+                    (blocking if name in _BLOCKING_PATH_HOOKS else advisory).append(problem)
 
-        if problems:
-            raise AppValidationError(
-                f"'{app.config.name}' has invalid hooks in {app.module_name}/hooks.py:\n"
-                + "\n".join(f"  {problem}" for problem in problems)
-                + "\nPoint each path at code that exists (or drop the hook). Hook shapes: "
-                "https://docs.frappe.io/framework/user/en/python-api/hooks"
-            )
+        if blocking:
+            raise AppValidationError(_blocking_message(app, blocking))
+        location = f"{app.module_name}/hooks.py"
+        return [f"'{app.config.name}' has a stale hook in {location}: {problem}" for problem in advisory]
+
+
+def _blocking_message(app: "App", problems: list[str]) -> str:
+    return (
+        f"'{app.config.name}' has invalid hooks in {app.module_name}/hooks.py:\n"
+        + "\n".join(f"  {problem}" for problem in problems)
+        + "\nPoint each path at code that exists (or drop the hook). Hook shapes: "
+        "https://docs.frappe.io/framework/user/en/python-api/hooks"
+    )
 
 
 def _hook_assignments(tree: ast.Module) -> list[tuple[str, ast.expr]]:

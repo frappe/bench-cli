@@ -275,7 +275,8 @@ class App:
                 self.checkout_commit(commit)
             dependencies = self._install_dependencies(on_progress) if install_dependencies else []
             if self.is_staged:
-                self.validate()
+                for warning in self.validate():
+                    on_progress(f"Warning: {warning}")
             self.promote()
         except BenchError:
             self._undo_clone(existing_clone)
@@ -336,10 +337,10 @@ class App:
 
         return AppDependencyInstaller(self.bench, self).install(on_progress)
 
-    def validate(self) -> None:
+    def validate(self) -> list[str]:
         from pilot.core.app.validator import Validator
 
-        Validator(self).validate()
+        return Validator(self).validate()
 
     def _install_into_environment(self) -> None:
         from pilot.managers.environment import PythonEnvManager

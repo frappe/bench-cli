@@ -99,9 +99,14 @@ def test_install_stages_an_already_cloned_app_instead_of_re_cloning(tmp_path: Pa
         raise AssertionError("an app already in apps/ must not be re-cloned")
 
     validated_at = []
+
+    def record_validation(self: App) -> list[str]:
+        validated_at.append(self.path)
+        return []
+
     with (
         patch.object(AppRepository, "clone", unexpected_clone),
-        patch.object(App, "validate", lambda self: validated_at.append(self.path)),
+        patch.object(App, "validate", record_validation),
         patch.object(App, "_install_into_environment"),
         patch.object(App, "_build_assets_via_env_manager"),
     ):

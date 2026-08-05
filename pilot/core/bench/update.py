@@ -47,7 +47,8 @@ class BenchUpdater:
         # installed or built yet, and reverting is a checkout.
         for app in updated:
             on_progress(f"Validating {app.config.name}...")
-            app.validate()
+            for warning in app.validate():
+                on_progress(f"Warning: {warning}")
 
     @staticmethod
     def _follows_its_branch(app: "App", live_lookup: bool) -> bool:

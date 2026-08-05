@@ -25,9 +25,11 @@ class Validator:
         self.app = app
         self.checks = checks or _all_checks()
 
-    def validate(self) -> None:
+    def validate(self) -> list[str]:
+        warnings = []
         for check in self.checks:
-            check.run(self.app)
+            warnings += check.run(self.app) or []
+        return warnings
 
 
 def _all_checks() -> list["ValidationCheck"]:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
 import typing
 from collections.abc import Iterable, Iterator
@@ -19,6 +20,12 @@ if typing.TYPE_CHECKING:
     from pilot.core.app import App
 
 
+def _distribution_name(requirement: str) -> str:
+    """The PEP 503 normalized project name heading a requirement string."""
+    name = re.split(r"[<>=!~;\[\s]", requirement, maxsplit=1)[0]
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
 class ImportCheck:
     """Validates imports in a throwaway venv without executing app modules."""
 
@@ -29,6 +36,7 @@ class ImportCheck:
         locations = self._imported_module_locations(app)
         unresolved = self._get_on_disk_resolver(app).unresolved(locations)
         unresolved = self._get_missing_from_bench_env(app, unresolved)
+        unresolved = self._drop_declared_extras(app, unresolved)
         if not unresolved:
             return  # everything imported is already on the bench - nothing to install
 
@@ -68,6 +76,29 @@ class ImportCheck:
 
         missing = unimportable_modules(python, candidates)
         return [name for name in unresolved if name not in candidates or name in missing]
+
+    @staticmethod
+    def _drop_declared_extras(app: "App", unresolved: list[str]) -> list[str]:
+        """Ignore imports an optional-dependency group declares.
+
+        Installing an app never pulls its extras, so those imports cannot resolve -
+        but a declared extra is an optional feature, not a broken import. The
+        _is_test_file skip covers the same ground for undeclared test-only imports,
+        and only where the file is named like a test.
+        """
+        project = (read_pyproject(app) or {}).get("project", {})
+        extras = project.get("optional-dependencies", {}) if isinstance(project, dict) else {}
+        if not isinstance(extras, dict):
+            return unresolved  # VersionSpecifiersCheck reports the bad table
+
+        declared = {
+            _distribution_name(requirement)
+            for group in extras.values()
+            if isinstance(group, list)
+            for requirement in group
+            if isinstance(requirement, str)
+        }
+        return [name for name in unresolved if _distribution_name(name.split(".", 1)[0]) not in declared]
 
     @staticmethod
     def _dependency_paths(app: "App") -> list[Path]:
