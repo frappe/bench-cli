@@ -81,22 +81,12 @@ _PATH_HOOKS = frozenset(
     ]
 )
 
-# The subset frappe resolves eagerly during install, migrate, build, or uninstall,
-# with a bare get_attr() and no guard - a stale path there aborts the operation
-# pilot is running. Every other path hook resolves lazily on a runtime action, and
-# frappe skips a scheduler_events path it cannot import instead of failing migrate.
-_BLOCKING_PATH_HOOKS = frozenset(
-    [
-        "after_build",
-        "after_install",
-        "after_migrate",
-        "after_sync",
-        "after_uninstall",
-        "before_install",
-        "before_migrate",
-        "before_uninstall",
-    ]
-)
+# The only hook whose consumer catches a path it cannot import: frappe's
+# insert_single_event() warns and skips the job, so a stale one never fails an
+# install or a migrate. Every other path hook reaches an unguarded get_attr() -
+# mid-migrate, on login, or when Desk boots - and a failure there is worse than a
+# blocked update, so anything not listed here stays fatal.
+_ADVISORY_PATH_HOOKS = frozenset(["scheduler_events"])
 
 
 # Shapes a dict hook definitely isn't. A name or a call may still evaluate to a
@@ -110,9 +100,9 @@ class HooksCheck:
     Only documented hooks are inspected; app-specific hook names are left alone.
     SyntaxCheck guarantees hooks.py parses first.
 
-    A stale path only blocks when frappe would abort on it. The rest are returned
-    as warnings: refusing to update over them would strand a bench on a defect in
-    an upstream app the operator cannot patch.
+    Stale paths are fatal by default. Only a hook whose consumer is known to catch
+    the failure comes back as a warning, so refusing to update never hinges on a
+    defect frappe itself tolerates.
     """
 
     def run(self, app: "App") -> list[str]:
@@ -133,7 +123,7 @@ class HooksCheck:
                 error = _path_error(app, path)
                 if error:
                     problem = f"line {lineno}: {name} -> {path}: {error}"
-                    (blocking if name in _BLOCKING_PATH_HOOKS else advisory).append(problem)
+                    (advisory if name in _ADVISORY_PATH_HOOKS else blocking).append(problem)
 
         if blocking:
             raise AppValidationError(_blocking_message(app, blocking))

@@ -337,10 +337,10 @@ def test_hooks_fails_when_path_points_at_missing_submodule(tmp_path: Path) -> No
         HooksCheck().run(app)
 
 
-def test_hooks_warns_instead_of_failing_for_a_lazily_resolved_hook(tmp_path: Path) -> None:
-    """frappe skips a scheduler_events path it cannot import rather than failing the
-    migrate, so blocking an update over one strands the bench on an upstream defect
-    the operator cannot patch."""
+def test_hooks_warns_instead_of_failing_for_a_stale_scheduler_event(tmp_path: Path) -> None:
+    """frappe's insert_single_event() catches a scheduler path it cannot import and
+    skips the job, so blocking an update over one strands the bench on an upstream
+    defect the operator cannot patch."""
     app = _make_hooks_app(
         tmp_path,
         'scheduler_events = {"daily": ["myapp.tasks.cleanup_old_syncs"]}\n',
@@ -353,9 +353,21 @@ def test_hooks_warns_instead_of_failing_for_a_lazily_resolved_hook(tmp_path: Pat
     assert "cleanup_old_syncs" in warnings[0]
 
 
-def test_hooks_still_fails_for_a_hook_frappe_resolves_eagerly(tmp_path: Path) -> None:
-    """A stale after_migrate aborts the migrate itself, so it stays fatal alongside
-    an advisory one - and the advisory problem stays out of the failure."""
+@pytest.mark.parametrize(
+    "hook",
+    ["boot_session", "on_login", "on_session_creation", "auth_hooks", "clear_cache"],
+)
+def test_hooks_still_fails_for_a_hook_frappe_resolves_unguarded(tmp_path: Path, hook: str) -> None:
+    """frappe reaches these through a bare get_attr() - on boot, at login, or during
+    a migrate's cache clear. Letting an update through would trade a blocked update
+    for a Desk or login outage, so only proven-guarded hooks may be advisory."""
+    app = _make_hooks_app(tmp_path / hook, f'{hook} = "myapp.tasks.missing"\n', tasks="")
+
+    with pytest.raises(AppValidationError, match="missing"):
+        HooksCheck().run(app)
+
+
+def test_hooks_keeps_an_advisory_problem_out_of_a_blocking_failure(tmp_path: Path) -> None:
     app = _make_hooks_app(
         tmp_path,
         'scheduler_events = {"daily": ["myapp.tasks.cleanup_old_syncs"]}\n'
@@ -370,9 +382,9 @@ def test_hooks_still_fails_for_a_hook_frappe_resolves_eagerly(tmp_path: Path) ->
 
 
 def test_hooks_fails_when_path_walks_into_a_non_package_directory(tmp_path: Path) -> None:
-    app = _make_hooks_app(tmp_path, 'after_install = "myapp.public.js.after_install"\n')
+    app = _make_hooks_app(tmp_path, 'on_login = "myapp.public.js.on_login"\n')
     (app.path / "myapp" / "public").mkdir()
-    with pytest.raises(AppValidationError, match=r"no module 'myapp\.public\.js\.after_install'"):
+    with pytest.raises(AppValidationError, match=r"no module 'myapp\.public\.js\.on_login'"):
         HooksCheck().run(app)
 
 
@@ -437,9 +449,10 @@ def test_hooks_reads_jenv_style_alias_paths(tmp_path: Path) -> None:
     app = _make_hooks_app(
         tmp_path, 'jinja = {"methods": ["shout:myapp.utils.shout"]}\n', utils="def whisper():\n    pass\n"
     )
-    assert "'utils' has no 'shout'" in HooksCheck().run(app)[0]
+    with pytest.raises(AppValidationError, match="'utils' has no 'shout'"):
+        HooksCheck().run(app)
     (app.path / "myapp" / "utils.py").write_text("def shout():\n    pass\n")
-    assert HooksCheck().run(app) == []
+    HooksCheck().run(app)
 
 
 def _make_frappe_at(bench_root: Path, version: str) -> None:
@@ -612,30 +625,28 @@ def test_import_check_resolves_external_package_published_under_different_dist_n
     ImportCheck().run(app)
 
 
-def test_import_check_allows_an_import_declared_as_an_optional_dependency(tmp_path: Path) -> None:
-    """Installing an app never pulls its extras, so a dev-only import cannot resolve -
-    blocking on one would refuse an update over an optional feature. The file is not
-    named like a test, so the _is_test_file skip does not cover it."""
+@pytest.mark.parametrize(
+    "relpath",
+    ["myapp/tests/microbenchmarks/run_benchmarks.py", "myapp/benchmarks/profile_it.py"],
+)
+def test_import_check_skips_files_only_a_developer_runs(tmp_path: Path, relpath: str) -> None:
+    """A dev extra a plain install never provides cannot resolve, and nothing loads
+    these files at request or migrate time. The filename rule alone missed them -
+    frappe's tests/microbenchmarks/run_benchmarks.py imports pyperf."""
     _make_fake_frappe(tmp_path)
     app = _make_app(
         tmp_path,
         "myapp",
-        (
-            '[project]\nname = "myapp"\nversion = "0.0.1"\ndependencies = ["frappe"]\n\n'
-            "[project.optional-dependencies]\n"
-            'dev = ["py_perf==2.8.1"]\n\n'
-            f"{_SETUPTOOLS_BUILD}"
-        ),
-        {
-            "myapp/hooks.py": "app_name = 'myapp'\n",
-            "myapp/benchmarks/run_benchmarks.py": "import py_perf\n",
-        },
+        f'[project]\nname = "myapp"\nversion = "0.0.1"\ndependencies = ["frappe"]\n\n{_SETUPTOOLS_BUILD}',
+        {"myapp/hooks.py": "app_name = 'myapp'\n", relpath: "import definitely_missing_package_xyz\n"},
     )
     ImportCheck().run(app)
 
 
-def test_import_check_still_fails_for_a_module_no_group_declares(tmp_path: Path) -> None:
-    """The extras skip is scoped to declared names, not a blanket bypass."""
+def test_import_check_fails_for_a_runtime_module_scope_import_of_an_extra(tmp_path: Path) -> None:
+    """Declaring a package as an extra does not make an unconditional import safe:
+    the extra is never installed, so the first request loading this controller would
+    raise ModuleNotFoundError. Only the file's location may excuse an import."""
     _make_fake_frappe(tmp_path)
     app = _make_app(
         tmp_path,
@@ -643,12 +654,12 @@ def test_import_check_still_fails_for_a_module_no_group_declares(tmp_path: Path)
         (
             '[project]\nname = "myapp"\nversion = "0.0.1"\ndependencies = ["frappe"]\n\n'
             "[project.optional-dependencies]\n"
-            'dev = ["py_perf==2.8.1"]\n\n'
+            'dev = ["definitely-missing-package-xyz==1.0"]\n\n'
             f"{_SETUPTOOLS_BUILD}"
         ),
         {
             "myapp/hooks.py": "app_name = 'myapp'\n",
-            "myapp/utils.py": "import definitely_missing_package_xyz\n",
+            "myapp/controllers/todo.py": "import definitely_missing_package_xyz\n",
         },
     )
     with pytest.raises(AppValidationError, match="definitely_missing_package_xyz"):

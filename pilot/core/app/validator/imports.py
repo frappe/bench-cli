@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import re
 import sys
 import typing
 from collections.abc import Iterable, Iterator
@@ -20,10 +19,8 @@ if typing.TYPE_CHECKING:
     from pilot.core.app import App
 
 
-def _distribution_name(requirement: str) -> str:
-    """The PEP 503 normalized project name heading a requirement string."""
-    name = re.split(r"[<>=!~;\[\s]", requirement, maxsplit=1)[0]
-    return re.sub(r"[-_.]+", "-", name).lower()
+# Directories whose contents only ever run from a developer's shell.
+_DEVELOPER_DIRECTORIES = frozenset(["tests", "benchmarks"])
 
 
 class ImportCheck:
@@ -36,7 +33,6 @@ class ImportCheck:
         locations = self._imported_module_locations(app)
         unresolved = self._get_on_disk_resolver(app).unresolved(locations)
         unresolved = self._get_missing_from_bench_env(app, unresolved)
-        unresolved = self._drop_declared_extras(app, unresolved)
         if not unresolved:
             return  # everything imported is already on the bench - nothing to install
 
@@ -76,29 +72,6 @@ class ImportCheck:
 
         missing = unimportable_modules(python, candidates)
         return [name for name in unresolved if name not in candidates or name in missing]
-
-    @staticmethod
-    def _drop_declared_extras(app: "App", unresolved: list[str]) -> list[str]:
-        """Ignore imports an optional-dependency group declares.
-
-        Installing an app never pulls its extras, so those imports cannot resolve -
-        but a declared extra is an optional feature, not a broken import. The
-        _is_test_file skip covers the same ground for undeclared test-only imports,
-        and only where the file is named like a test.
-        """
-        project = (read_pyproject(app) or {}).get("project", {})
-        extras = project.get("optional-dependencies", {}) if isinstance(project, dict) else {}
-        if not isinstance(extras, dict):
-            return unresolved  # VersionSpecifiersCheck reports the bad table
-
-        declared = {
-            _distribution_name(requirement)
-            for group in extras.values()
-            if isinstance(group, list)
-            for requirement in group
-            if isinstance(requirement, str)
-        }
-        return [name for name in unresolved if _distribution_name(name.split(".", 1)[0]) not in declared]
 
     @staticmethod
     def _dependency_paths(app: "App") -> list[Path]:
@@ -145,9 +118,9 @@ class ImportCheck:
         stdlib = sys.stdlib_module_names
         locations: dict[str, list[str]] = {}
         for path in python_files(app):
-            if self._is_test_file(path):
-                continue
             relpath = path.relative_to(app.path)
+            if self._is_developer_only(relpath):
+                continue
             for module, lineno in self._file_imported_modules(app, path):
                 if module.split(".", 1)[0] in stdlib:
                     continue
@@ -158,10 +131,16 @@ class ImportCheck:
         return locations
 
     @staticmethod
-    def _is_test_file(path: Path) -> bool:
-        # Test-only imports (responses, time_machine, ...) come from dev extras
-        # a plain pip install never provides, so they'd always fail to resolve.
-        return path.name.startswith("test_") or path.name == "conftest.py"
+    def _is_developer_only(relpath: Path) -> bool:
+        """Files only a developer runs, keyed off location rather than the imports
+        themselves. Their imports (responses, pyperf, time_machine, ...) come from
+        dev extras a plain install never provides, so they'd always fail to resolve,
+        and no request or migrate ever loads them. A module-scope import anywhere
+        else has to resolve however the app declares the package.
+        """
+        if relpath.name.startswith("test_") or relpath.name == "conftest.py":
+            return True
+        return bool(_DEVELOPER_DIRECTORIES.intersection(relpath.parts[:-1]))
 
     def _file_imported_modules(self, app: "App", path: Path) -> list[tuple[str, int]]:
         try:
