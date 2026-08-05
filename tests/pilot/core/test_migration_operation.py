@@ -423,6 +423,59 @@ def test_update_records_the_new_app_revision(tmp_path: Path) -> None:
     assert operation.state == "completed"
 
 
+def test_update_failure_records_the_revision_left_on_disk(tmp_path: Path) -> None:
+    """The checkout lands before the phase can fail, so a needs_attention record has
+    to report the tree as it now is - not the revision the update started from."""
+    mock_bench = MagicMock()
+    mock_bench.path = tmp_path
+    mock_bench.app.return_value.installed_hash = "2222222"
+    mock_bench._update_apps.side_effect = RuntimeError("validation failed after checkout")
+
+    from pilot.core.bench.migration.store import MigrationStore
+
+    operation = MigrationStore(mock_bench)._create(
+        "update",
+        apps=[AppRevision("frappe", "1111111")],
+        apps_filter=None,
+        sites=[],
+    )
+    operation.state = get_state("updating")
+
+    with pytest.raises(RuntimeError):
+        operation.update_apps()
+
+    assert operation.apps[0].updated_sha == "2222222"
+    assert operation.state == "needs_attention"
+    # Still false, so retry re-runs the update step instead of skipping to migrate.
+    assert operation.apps_updated is False
+
+
+def test_update_failure_reports_the_original_error_when_the_tree_cannot_be_read(
+    tmp_path: Path,
+) -> None:
+    """Recording the checked-out revision must not mask the failure being diagnosed."""
+    mock_bench = MagicMock()
+    mock_bench.path = tmp_path
+    mock_bench._update_apps.side_effect = RuntimeError("the real failure")
+    mock_bench.app.side_effect = BenchError("app is gone")
+
+    from pilot.core.bench.migration.store import MigrationStore
+
+    operation = MigrationStore(mock_bench)._create(
+        "update",
+        apps=[AppRevision("frappe", "1111111")],
+        apps_filter=None,
+        sites=[],
+    )
+    operation.state = get_state("updating")
+
+    with pytest.raises(RuntimeError, match="the real failure"):
+        operation.update_apps()
+
+    assert operation.apps[0].updated_sha is None
+    assert operation.state == "needs_attention"
+
+
 def test_update_apps_checks_out_the_pin_captured_at_create_time(tmp_path: Path) -> None:
     """update_apps() must deploy exactly what was captured at create time, never
     re-resolve a marketplace/branch target that may have moved on since."""

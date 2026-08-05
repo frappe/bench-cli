@@ -228,7 +228,7 @@
             <div class="flex shrink-0 items-center gap-2 font-mono text-xs text-ink-gray-6">
               <span>{{ shortSha(app.sha) }}</span>
               <span class="lucide-arrow-right size-3.5 text-ink-gray-4" aria-hidden="true" />
-              <span :class="app.updated_sha ? 'text-ink-green-7' : 'text-ink-gray-5'">
+              <span :class="revisionClass(app)" :title="revisionTitle(app)">
                 {{ shortSha(app.updated_sha || app.target_sha) }}
               </span>
               <a
@@ -429,6 +429,16 @@ const doSkip = () => {
 const badgeTone = (tone) => (tone === 'orange' ? 'amber' : tone)
 const countLabel = (count = 0, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`
 const shortSha = (sha) => sha?.slice(0, 7) || '—'
+
+const revisionClass = (app) => {
+  if (op.value?.apps_updated) return 'text-ink-green-7'
+  return app.updated_sha ? 'text-ink-amber-7' : 'text-ink-gray-5'
+}
+const revisionTitle = (app) => {
+  if (op.value?.apps_updated) return 'Updated'
+  if (app.updated_sha) return 'Checked out, but the update did not finish'
+  return 'Not updated yet'
+}
 
 onMounted(async () => {
   loading.value = true

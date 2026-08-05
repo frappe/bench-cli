@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import importlib
 import json
 from collections.abc import Callable
@@ -206,9 +207,13 @@ class MigrationOperation:
             self.bench._update_apps(filter_set, on_progress, pins)
             self.bench._reinstall_apps(filter_set, on_progress)
             self.bench._rebuild_assets(filter_set, on_progress)
-            for revision in self.apps:
-                revision.updated_sha = self.bench.app(revision.name).installed_hash
+            self._record_installed_shas()
         except Exception as error:
+            # The checkout lands before the phase can fail, so read the tree back
+            # rather than leave the record pointing at a revision that is gone.
+            # Bookkeeping must not mask the failure being reported.
+            with contextlib.suppress(Exception):
+                self._record_installed_shas()
             self.diagnosis = {
                 "phase": "update",
                 "message": str(error),
@@ -392,6 +397,11 @@ class MigrationOperation:
             self._transition("backing_up")
         else:
             self._transition("updating" if self.apps else "migrating")
+
+    def _record_installed_shas(self) -> None:
+        """Point every revision at what is checked out right now."""
+        for revision in self.apps:
+            revision.updated_sha = self.bench.app(revision.name).installed_hash
 
     def _enter_needs_attention(self, phase: str, site: str | None) -> None:
         self.return_state = phase
