@@ -57,13 +57,12 @@ directory that `bench.apps()` scans to decide what to update, reinstall and cons
 half-installed app never reaches a site.
 
 `App.validate` runs every check, and is the only gate: install, `update` and `switch-branch` all use it, so an app that
-has moved revision is held to the same standard as a new one. `pilot.core.app.validator` holds one class per check,
-each raising `AppValidationError` with the fix. See [App Dependencies](app-dependencies.md) for what apps must declare
-and how conflicts between them are resolved.
+has moved revision is held to the same standard as a new one. `pilot.core.app.validator` holds one class per check. A
+check raises `AppValidationError` with the fix, or returns advisory findings the calling task reports as warnings. See
+[App Validation](app-validation.md) for what each check catches and which findings block, and
+[App Dependencies](app-dependencies.md) for what apps must declare and how conflicts between them are resolved.
 
-Checks read the app's source, never run it. Hooks validation resolves each dotted path to a name that exists on disk -
-not to code that works: it cannot see a wrong signature, and stops at the first attribute, so `module.Class.method`
-is checked only as far as `Class`.
+Checks read the app's source, never run it.
 
 Every app must ship `pyproject.toml` with a `[tool.bench.frappe-dependencies]` table pinning the frappe versions it
 supports, and the declared ranges are compared against the versions actually installed.
