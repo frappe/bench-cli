@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, send_file
 
 from admin.backend.api.responses import accepted_task_response, error_response
 from admin.backend.providers.apps import AppProvider
@@ -28,6 +28,21 @@ def index():
     except Exception:
         return error_response("apps_unavailable", "Could not read installed apps.", 500)
     return jsonify([asdict(a) for a in apps])
+
+
+@apps_bp.get("/<name>/logo")
+def app_logo(name: str):
+    """Serve a custom app's logo.svg/png from the cloned apps/ tree."""
+    err = validate_app_name(name)
+    if err:
+        return error_response("invalid_app", err, 422)
+
+    bench_root = Path(current_app.config["BENCH_ROOT"])
+    provider = AppProvider(bench_root)
+    logo_path = provider.find_logo_path(bench_root / "apps" / name, name)
+    if not logo_path:
+        return error_response("logo_not_found", f"No logo found for '{name}'.", 404)
+    return send_file(logo_path)
 
 
 @marketplace_bp.get("/apps")
