@@ -10,7 +10,7 @@
         v-if="open"
         ref="panel"
         data-dismissable-layer
-        class="z-[60] fixed bg-surface-elevation-1 shadow-2xl p-1 border rounded-lg border-outline-gray-2 w-40 pointer-events-auto"
+        class="z-[60] fixed bg-surface-elevation-1 shadow-2xl p-1 border rounded-6 border-outline-gray-2 w-40 pointer-events-auto"
         :style="panelStyle"
       >
         <Button

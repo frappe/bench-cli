@@ -72,7 +72,7 @@
               v-for="app in availableApps"
               :key="app.name"
               type="button"
-              class="flex items-center gap-3 hover:bg-surface-alpha-gray-1 px-2 py-2 rounded min-w-0 text-left transition-colors"
+              class="flex items-center gap-3 hover:bg-surface-alpha-gray-1 px-2 py-2 rounded-4 min-w-0 text-left transition-colors"
               @click="toggleApp(app.name)"
             >
               <AppIcon :name="app.name" size="lg" />

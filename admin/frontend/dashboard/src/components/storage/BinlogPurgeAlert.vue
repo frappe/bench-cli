@@ -91,22 +91,15 @@ const purge = async () => {
 <template>
   <Alert
     v-if="show"
+    class="mt-4"
     title="Binary logs are taking up space"
-    :dismissible="false"
-    class="mt-4 !bg-surface-blue-1"
+    theme="blue"
+    :primary-action="{ label: 'Purge binary logs', onClick: openDialog }"
   >
     <template #description>
       <p class="text-ink-gray-6 prose-sm">
         Binary logs are using {{ formatBytes(bytes) }}. Purge older logs to free up space.
       </p>
-    </template>
-
-    <template #footer>
-      <div class="flex col-span-2 items-center gap-3">
-        <Button  theme='blue' class="ml-auto" @click="openDialog"
-          >Purge binary logs</Button
-        >
-      </div>
     </template>
   </Alert>
 

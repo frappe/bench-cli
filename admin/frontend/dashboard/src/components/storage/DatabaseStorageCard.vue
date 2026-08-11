@@ -102,7 +102,7 @@ const isDatabaseListExpandable = computed(
           v-for="row in visibleDatabases"
           :key="row.schema"
           :to="row.site ? { path: '/database/analyzer', query: { site: row.site } } : undefined"
-          class="group block px-2 rounded no-underline transition-colors"
+          class="group block px-2 rounded-4 no-underline transition-colors"
           :class="{ 'hover:bg-surface-gray-1': row.site }"
         >
           <div

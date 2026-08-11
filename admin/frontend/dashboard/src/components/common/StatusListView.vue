@@ -25,7 +25,8 @@
 </template>
 
 <script setup>
-import { Badge, ListRowItem, ListView } from 'frappe-ui'
+import { Badge } from 'frappe-ui'
+import { ListRowItem, ListView } from 'frappe-ui/experimental'
 
 /**
  * A ListView whose `badge` column renders a Badge and whose other columns

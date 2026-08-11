@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    class="flex items-center gap-1.5 px-2.5 py-2 rounded transition-colors w-full hover:bg-surface-gray-1 text-sm text-left"
+    class="flex items-center gap-1.5 px-2.5 py-2 rounded-4 transition-colors w-full hover:bg-surface-gray-1 text-sm text-left"
     :class="failed ? 'text-ink-red-7' : 'text-ink-gray-7'"
   >
     <span

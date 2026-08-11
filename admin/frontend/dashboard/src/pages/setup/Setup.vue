@@ -1,7 +1,7 @@
 <template>
   <div class="flex justify-center items-center p-4 h-screen">
     <div
-      class="flex flex-col bg-surface-base shadow-sm border rounded-xl border-outline-gray-2 w-full"
+      class="flex flex-col bg-surface-base shadow-sm border rounded-7 border-outline-gray-2 w-full"
       :class="modalWidthClass"
       style="max-height: calc(100vh - 2rem)"
     >
@@ -69,9 +69,10 @@
             class="flex items-center self-start gap-1 text-ink-gray-5 hover:text-ink-gray-7 text-sm"
             @click="toggleStreamDetails"
           >
-            <FeatherIcon
-              :name="showStreamDetails ? 'chevron-down' : 'chevron-right'"
+            <span
+              :class="showStreamDetails ? 'lucide-chevron-down' : 'lucide-chevron-right'"
               class="w-4 h-4"
+              aria-hidden="true"
             />
             {{ showStreamDetails ? 'Hide details' : 'Show details' }}
           </button>
@@ -107,7 +108,7 @@
           <div>
             <p class="font-medium text-ink-gray-6 text-xs">Develop locally</p>
             <code
-              class="block bg-surface-gray-2 mt-1 px-2 py-1.5 rounded font-mono text-ink-gray-8 text-sm select-all"
+              class="block bg-surface-gray-2 mt-1 px-2 py-1.5 rounded-4 font-mono text-ink-gray-8 text-sm select-all"
               >{{ pilotCommand }}
               start</code
             >
@@ -115,7 +116,7 @@
           <div>
             <p class="font-medium text-ink-gray-6 text-xs">Deploy to production</p>
             <code
-              class="block bg-surface-gray-2 mt-1 px-2 py-1.5 rounded font-mono text-ink-gray-8 text-sm select-all"
+              class="block bg-surface-gray-2 mt-1 px-2 py-1.5 rounded-4 font-mono text-ink-gray-8 text-sm select-all"
               >{{ pilotCommand }}
               setup production --admin-domain &lt;your-domain&gt; --tls --letsencrypt-email
               &lt;you@example.com&gt;</code
@@ -193,7 +194,6 @@ import {
   FormLabel,
   Password,
   ErrorMessage,
-  FeatherIcon,
   LoadingText,
 } from 'frappe-ui'
 import TaskStream from '../../components/tasks/TaskStream.vue'

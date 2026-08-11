@@ -60,7 +60,7 @@ const navigate = (delta: number) => {
     @click.self="close"
   >
     <div
-      class="search-panel mt-[15vh] w-full max-w-lg overflow-hidden rounded bg-surface-gray-1 shadow-lg"
+      class="search-panel mt-[15vh] w-full max-w-lg overflow-hidden rounded-4 bg-surface-gray-1 shadow-lg"
       @keydown.esc.prevent="close"
       @keydown.enter.prevent="go(activeIndex)"
       @keydown.up.prevent="navigate(-1)"
@@ -90,7 +90,7 @@ const navigate = (delta: number) => {
               v-for="(item, i) in group.items"
               :key="`${name}-${item.name}`"
               role="option"
-              class="flex cursor-pointer items-center gap-2 rounded p-2 hover:bg-surface-gray-2"
+              class="flex cursor-pointer items-center gap-2 rounded-4 p-2 hover:bg-surface-gray-2"
               :class="[
                 flatItems.indexOf(item) === activeIndex ? 'bg-surface-gray-2' : '',
                 i === group.items.length - 1 ? 'mb-3' : 'mb-0.5',
@@ -153,7 +153,7 @@ const navigate = (delta: number) => {
 }
 
 kbd {
-  @apply inline-flex h-5 min-w-5 items-center justify-center rounded-sm;
+  @apply inline-flex h-5 min-w-5 items-center justify-center rounded-1;
   @apply border border-outline-gray-2 bg-surface-gray-2 px-1 font-sans text-ink-gray-6;
   font-size: 0.6875rem;
   line-height: 1;

@@ -12,16 +12,16 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useTheme, FrappeUIProvider } from 'frappe-ui'
+import { FrappeUIProvider } from 'frappe-ui'
 import ReconnectOverlay from './components/common/ReconnectOverlay.vue'
 import SignedOutDialog from './components/common/SignedOutDialog.vue'
 import MainLayout from './layouts/MainLayout.vue'
 import { useSetupHandoff } from './composables/setup/useSetupHandoff'
+import { useTheme } from './composables/common/useTheme'
 
 const route = useRoute()
 const isFullScreen = computed(() => route.meta.fullScreen === true)
 const { awaitingTerminal } = useSetupHandoff()
-const { initializeTheme } = useTheme()
-
-initializeTheme()
+// Restores the saved light/dark preference on first call.
+useTheme()
 </script>

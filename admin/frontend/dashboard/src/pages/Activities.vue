@@ -226,9 +226,9 @@ onMounted(() => {
     <div v-if="loading" class="flex flex-col gap-1 mt-4">
       <div v-for="i in 8" :key="i" class="flex items-center gap-3 px-4 py-3">
         <Skeleton class="rounded-full size-6 shrink-0" />
-        <Skeleton class="h-3 rounded" :class="i % 2 ? 'w-48' : 'w-36'" />
-        <Skeleton class="ml-auto h-3 w-24 rounded shrink-0" />
-        <Skeleton class="h-3 w-16 rounded shrink-0" />
+        <Skeleton class="h-3 rounded-4" :class="i % 2 ? 'w-48' : 'w-36'" />
+        <Skeleton class="ml-auto h-3 w-24 rounded-4 shrink-0" />
+        <Skeleton class="h-3 w-16 rounded-4 shrink-0" />
       </div>
     </div>
 
@@ -265,10 +265,10 @@ onMounted(() => {
     <!-- empty state -->
     <div
       v-else
-      class="flex flex-col justify-center items-center gap-3 mt-4 h-1/2 border border-dashed rounded-xl
+      class="flex flex-col justify-center items-center gap-3 mt-4 h-1/2 border border-dashed rounded-7
       border-outline-gray-2 py-10"
     >
-      <div class="place-items-center grid bg-surface-gray-2 rounded-lg size-10">
+      <div class="place-items-center grid bg-surface-gray-2 rounded-6 size-10">
         <span class="lucide-history size-5 text-ink-gray-5" />
       </div>
 

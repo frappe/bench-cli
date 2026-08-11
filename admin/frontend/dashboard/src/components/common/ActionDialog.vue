@@ -32,7 +32,7 @@
 
         <div
           v-if="warning"
-          class="flex items-start gap-3 bg-surface-red-1 p-3 border border-outline-red-2 rounded-lg"
+          class="flex items-start gap-3 bg-surface-red-1 p-3 border border-outline-red-2 rounded-6"
         >
           <span class="mt-0.5 size-4 text-ink-red-6 lucide-alert-triangle shrink-0" />
           <div class="min-w-0 text-p-sm text-ink-red-8">

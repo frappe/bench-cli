@@ -62,7 +62,7 @@ onMounted(load)
 
     <div
       v-if="loading && !storageData"
-      class="bg-surface-base border border-outline-gray-2 rounded-xl overflow-hidden"
+      class="bg-surface-base border border-outline-gray-2 rounded-7 overflow-hidden"
     >
       <div
         class="divide-y lg:divide-x lg:divide-y-0 grid grid-cols-1 divide-outline-gray-2 lg:grid-cols-2"
@@ -72,7 +72,7 @@ onMounted(load)
           <Skeleton
             v-for="row in 4"
             :key="row"
-            class="h-3.5 rounded"
+            class="h-3.5 rounded-4"
             :class="row % 2 ? 'w-full' : 'w-2/3'"
           />
         </div>
@@ -83,7 +83,7 @@ onMounted(load)
 
     <div
       v-else-if="storageData"
-      class="bg-surface-base border border-outline-gray-2 rounded-xl fade-in overflow-hidden"
+      class="bg-surface-base border border-outline-gray-2 rounded-7 fade-in overflow-hidden"
     >
       <div
         class="divide-y lg:divide-x lg:divide-y-0 grid grid-cols-1 divide-outline-gray-2 lg:grid-cols-2"

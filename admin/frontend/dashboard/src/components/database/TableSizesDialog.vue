@@ -26,7 +26,8 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Dialog, ErrorMessage, ListView, LoadingText } from 'frappe-ui'
+import { Dialog, ErrorMessage, LoadingText } from 'frappe-ui'
+import { ListView } from 'frappe-ui/experimental'
 import { apiErrorMessage } from '@/api/client'
 import { databaseApi } from '@/api/database'
 import { formatBytes } from '@/utils/format'

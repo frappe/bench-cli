@@ -51,7 +51,7 @@
       <!-- Chrome marks a clicked summary :focus-visible; blur keeps the focus
            ring for keyboard only. w-fit so the ring hugs the word. -->
       <summary
-        class="flex items-center gap-1.5 pr-1.5 rounded-sm w-fit text-ink-gray-6 text-base cursor-pointer select-none"
+        class="flex items-center gap-1.5 pr-1.5 rounded-1 w-fit text-ink-gray-6 text-base cursor-pointer select-none"
         @click="(e) => e.currentTarget.blur()"
       >
         <span

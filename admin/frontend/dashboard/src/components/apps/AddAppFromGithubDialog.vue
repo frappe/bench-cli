@@ -38,13 +38,12 @@
             <p v-if="!gitStatus" class="text-ink-gray-5 text-sm">Loading…</p>
             <Alert
               v-else-if="!gitConnected"
-              theme="yellow"
+              theme="amber"
               title="No GitHub account connected"
-              :dismissible="false"
             />
             <template v-else>
               <div
-                class="flex items-center gap-2 bg-surface-gray-1 px-3 py-2 border rounded-lg border-outline-gray-2"
+                class="flex items-center gap-2 bg-surface-gray-1 px-3 py-2 border rounded-6 border-outline-gray-2"
               >
                 <span class="text-ink-gray-7 text-sm">
                   Connected as

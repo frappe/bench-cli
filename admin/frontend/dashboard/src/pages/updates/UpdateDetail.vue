@@ -3,13 +3,13 @@
     <!-- Skeleton mirrors the page: meta row, then a card of rows. -->
     <div v-if="loading && !op" class="px-2">
       <div class="flex justify-between items-center py-2">
-        <Skeleton class="rounded w-44 h-4" />
-        <Skeleton class="rounded w-24 h-4" />
+        <Skeleton class="rounded-4 w-44 h-4" />
+        <Skeleton class="rounded-4 w-24 h-4" />
       </div>
-      <div class="mt-6 p-1 border border-outline-gray-2 rounded-lg">
+      <div class="mt-6 p-1 border border-outline-gray-2 rounded-6">
         <div class="flex justify-between items-center px-2.5 py-2">
-          <Skeleton class="rounded w-24 h-4" />
-          <Skeleton class="rounded w-12 h-3" />
+          <Skeleton class="rounded-4 w-24 h-4" />
+          <Skeleton class="rounded-4 w-12 h-3" />
         </div>
         <div
           v-for="index in 3"
@@ -17,7 +17,7 @@
           class="px-2.5 py-2"
           :style="{ opacity: 1 - index * 0.25 }"
         >
-          <Skeleton class="rounded w-48 h-4" />
+          <Skeleton class="rounded-4 w-48 h-4" />
         </div>
       </div>
     </div>
@@ -46,7 +46,7 @@
       <ErrorMessage v-if="error" class="mt-4" :message="error" />
 
       <!-- Unresolved failure -->
-      <section v-if="isAttention" class="mt-4 overflow-hidden rounded-lg border border-outline-gray-2">
+      <section v-if="isAttention" class="mt-4 overflow-hidden rounded-6 border border-outline-gray-2">
         <div class="p-4">
           <div class="flex items-center gap-2">
             <span class="lucide-alert-triangle size-4 shrink-0 text-ink-red-6" />
@@ -62,7 +62,7 @@
           <p v-if="op.diagnosis?.patch" class="mt-2 text-p-sm text-ink-gray-7">
             Failing patch
             <code
-              class="ml-1 rounded bg-surface-gray-2 px-1.5 py-0.5 font-mono text-xs text-ink-gray-8"
+              class="ml-1 rounded-4 bg-surface-gray-2 px-1.5 py-0.5 font-mono text-xs text-ink-gray-8"
             >
               {{ op.diagnosis.patch }}
             </code>
@@ -88,7 +88,7 @@
           <button
             v-if="pending"
             type="button"
-            class="mt-4 flex items-center gap-2 px-2 py-1 rounded transition-colors text-p-sm text-ink-gray-7 hover:bg-surface-gray-1"
+            class="mt-4 flex items-center gap-2 px-2 py-1 rounded-4 transition-colors text-p-sm text-ink-gray-7 hover:bg-surface-gray-1"
             @click="openTaskLog({ id: pending.task_id })"
           >
             <Spinner size="md" class="text-ink-amber-7" />
@@ -161,7 +161,7 @@
               class="flex items-center justify-between gap-4 px-2.5 py-2"
             >
               <div class="flex items-center gap-2 min-w-0 flex-1">
-                <AppIcon :name="app.name" class="!rounded-sm size-5" initial-class="text-xs" />
+                <AppIcon :name="app.name" class="!rounded-1 size-5" initial-class="text-xs" />
                 <p class="min-w-0 truncate text-ink-gray-9 text-base">
                   {{ app.name }}
                 </p>
@@ -218,7 +218,7 @@
           <div>
             <div v-for="site in op.sites" :key="site.name">
               <div
-                class="flex items-center gap-2 px-2.5 py-2 rounded transition-colors"
+                class="flex items-center gap-2 px-2.5 py-2 rounded-4 transition-colors"
                 :class="siteJobs(site.name).length ? 'cursor-pointer hover:bg-surface-gray-1' : ''"
                 @click="toggleSiteJobs(site.name)"
               >
@@ -271,7 +271,7 @@
           :key="index"
           class="px-2.5 py-2 text-sm text-ink-gray-7"
         >
-          <code class="rounded bg-surface-gray-2 px-1 font-mono text-xs">{{ decision.patch }}</code>
+          <code class="rounded-4 bg-surface-gray-2 px-1 font-mono text-xs">{{ decision.patch }}</code>
           on
           <span class="font-medium text-ink-gray-8">{{ decision.site }}</span>
         </div>
@@ -282,7 +282,7 @@
         <template #body-content>
           <p class="text-p-sm text-ink-gray-6">
             Skipping marks
-            <code class="rounded bg-surface-gray-2 px-1 font-mono">{{ op.diagnosis?.patch }}</code>
+            <code class="rounded-4 bg-surface-gray-2 px-1 font-mono">{{ op.diagnosis?.patch }}</code>
             as completed for
             <b class="text-ink-gray-9">{{ op.failed_site }}</b> without running it. This cannot be
             undone, and the migration carries on from where it stopped.

@@ -8,7 +8,7 @@
     </div>
     <div
       v-if="loadError"
-      class="py-12 border border-dashed rounded-xl border-outline-red-2 text-ink-red-3 text-p-sm text-center"
+      class="py-12 border border-dashed rounded-7 border-outline-red-2 text-ink-red-3 text-p-sm text-center"
     >
       {{ loadError }}
     </div>
@@ -84,7 +84,8 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Button, Dialog, ErrorMessage, FormControl, ListRowItem, ListView, Spinner, toast } from 'frappe-ui'
+import { Button, Dialog, ErrorMessage, FormControl, Spinner, toast } from 'frappe-ui'
+import { ListRowItem, ListView } from 'frappe-ui/experimental'
 import EmptyState from '@/components/common/EmptyState.vue'
 import { apiErrorMessage } from '@/api/client'
 import { sshKeysApi } from '@/api/sshKeys'

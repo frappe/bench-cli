@@ -1,20 +1,20 @@
 <template>
   <template v-if="loading">
     <PageHero>
-      <template #icon><Skeleton class="rounded-lg size-9 sm:size-10 shrink-0" /></template>
+      <template #icon><Skeleton class="rounded-6 size-9 sm:size-10 shrink-0" /></template>
       <template #title>
-        <Skeleton class="rounded w-40 h-4" />
+        <Skeleton class="rounded-4 w-40 h-4" />
         <Skeleton class="rounded-full w-14 h-5 shrink-0" />
       </template>
       <template #actions>
-        <Skeleton class="hidden sm:block rounded w-28 h-7" />
-        <Skeleton class="hidden sm:block rounded w-24 h-7" />
-        <Skeleton class="rounded size-7" />
+        <Skeleton class="hidden sm:block rounded-4 w-28 h-7" />
+        <Skeleton class="hidden sm:block rounded-4 w-24 h-7" />
+        <Skeleton class="rounded-4 size-7" />
       </template>
     </PageHero>
     <div class="mx-auto w-full max-w-3xl">
       <StickyToolbar>
-        <Skeleton class="rounded w-64 h-7 sm:h-8" />
+        <Skeleton class="rounded-4 w-64 h-7 sm:h-8" />
       </StickyToolbar>
     </div>
   </template>

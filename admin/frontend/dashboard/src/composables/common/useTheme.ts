@@ -1,19 +1,26 @@
-import { useTheme as useFrappeTheme } from 'frappe-ui'
+import { useColorScheme } from 'frappe-ui'
 
 type Theme = 'light' | 'dark' | 'system'
 
+/**
+ * Thin wrapper around frappe-ui's `useColorScheme` that keeps Pilot's
+ * `setTheme` / `currentTheme` call sites unchanged.
+ *
+ * frappe-ui already mutes transitions during the swap, so the old
+ * `no-transition` dance here is no longer needed.
+ */
 export const useTheme = () => {
-  const { setTheme: setFrappeTheme, ...rest } = useFrappeTheme()
+  const { colorScheme, setColorScheme, toggleColorScheme } = useColorScheme()
 
   const setTheme = (theme: Theme) => {
-    document.documentElement.classList.add('no-transition')
-    setFrappeTheme(theme)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.documentElement.classList.remove('no-transition')
-      })
-    })
+    setColorScheme(theme)
   }
 
-  return { ...rest, setTheme }
+  return {
+    currentTheme: colorScheme,
+    setTheme,
+    colorScheme,
+    setColorScheme,
+    toggleColorScheme,
+  }
 }

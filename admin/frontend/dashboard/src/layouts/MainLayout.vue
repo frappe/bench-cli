@@ -79,7 +79,7 @@ function breadcrumbsFromRouteMeta({ title = '' }) {
       <div class="flex items-center justify-between">
         <template v-if="route.name == 'Home'">
           <div class="flex items-center gap-2">
-            <PilotLogo class="size-6 rounded-sm" />
+            <PilotLogo class="size-6 rounded-1" />
             <span class="text-ink-gray-9">Home</span>
           </div>
         </template>

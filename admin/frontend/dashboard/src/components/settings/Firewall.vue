@@ -3,7 +3,7 @@
     <Spinner size="lg" class="text-ink-gray-4" />
   </div>
   <div v-else class="space-y-6">
-    <Alert v-if="!production" title="Not enforced yet" theme="yellow" :dismissible="false">
+    <Alert v-if="!production" title="Not enforced yet" theme="amber">
       <template #description>
         <span class="text-ink-gray-6 text-p-sm"
           >These rules take effect only in production (they're applied by nginx). This bench isn't
@@ -27,7 +27,7 @@
       @update:model-value="(v) => (defaultPolicy = v ? 'deny' : 'allow')"
     />
 
-    <Alert v-if="lockoutRisk" title="Heads up" theme="yellow" :dismissible="false">
+    <Alert v-if="lockoutRisk" title="Heads up" theme="amber">
       <template #description>
         <span class="text-ink-gray-6 text-p-sm"
           >Everyone is blocked by default. Add an <b>Allow</b> rule for your own IP<template

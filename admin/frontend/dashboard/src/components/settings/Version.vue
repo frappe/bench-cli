@@ -9,7 +9,7 @@
       <p class="text-ink-gray-7 text-p-base">
         This is a development install. Update it from a terminal:
       </p>
-      <pre class="p-3 bg-surface-gray-2 rounded overflow-x-auto text-ink-gray-8 text-sm">git pull
+      <pre class="p-3 bg-surface-gray-2 rounded-4 overflow-x-auto text-ink-gray-8 text-sm">git pull
 pilot admin build
 pilot admin upgrade</pre>
       <p class="text-ink-gray-5 text-p-sm">The last step restarts the admin service.</p>
@@ -22,7 +22,7 @@ pilot admin upgrade</pre>
       </div>
       <pre
         v-else
-        class="p-3 bg-surface-gray-2 rounded max-h-64 overflow-auto text-ink-gray-7 text-sm whitespace-pre-wrap"
+        class="p-3 bg-surface-gray-2 rounded-4 max-h-64 overflow-auto text-ink-gray-7 text-sm whitespace-pre-wrap"
       >{{ log }}</pre>
     </div>
 

@@ -31,7 +31,7 @@ defineSlots<{
             v-for="(column, i) in columns"
             :key="column.key"
             class="bg-surface-gray-2 px-3 py-2 font-normal text-ink-gray-5 text-sm whitespace-nowrap"
-            :class="[column.class, i === 0 && 'rounded-l', i === columns.length - 1 && 'rounded-r']"
+            :class="[column.class, i === 0 && 'rounded-l-4', i === columns.length - 1 && 'rounded-r-4']"
           >
             {{ column.label }}
           </th>

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-if="loading" class="gap-4 grid grid-cols-1 sm:grid-cols-2">
-      <Skeleton v-for="i in 6" :key="i" class="rounded-lg h-[340px]" />
+      <Skeleton v-for="i in 6" :key="i" class="rounded-6 h-[340px]" />
     </div>
     <ErrorMessage v-else-if="error" :message="error" />
     <EmptyState
@@ -30,7 +30,8 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { AxisChart, ErrorMessage, Skeleton } from 'frappe-ui'
+import { ErrorMessage, Skeleton } from 'frappe-ui'
+import { AxisChart } from 'frappe-ui/experimental'
 import ChartCard from '@/components/common/ChartCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import SlowQueries from '@/components/dashboard/SlowQueries.vue'

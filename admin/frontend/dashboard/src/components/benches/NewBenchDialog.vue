@@ -271,7 +271,7 @@ async function createBench() {
             command line :
           </p>
           <pre
-            class="bg-surface-gray-2 px-3 py-2.5 rounded-lg text-ink-gray-8 text-sm select-all"
+            class="bg-surface-gray-2 px-3 py-2.5 rounded-6 text-ink-gray-8 text-sm select-all"
           >pilot new my-bench</pre>
         </div>
 
@@ -293,7 +293,7 @@ async function createBench() {
                 v-for="opt in processManagerOptions"
                 :key="opt.value"
                 type="button"
-                class="px-3 py-2 border rounded-lg text-left transition-colors"
+                class="px-3 py-2 border rounded-6 text-left transition-colors"
                 :class="processManager === opt.value
                   ? 'border-outline-gray-3 bg-surface-gray-2'
                   : 'border-outline-gray-2 hover:bg-surface-alpha-gray-1'"
@@ -314,7 +314,7 @@ async function createBench() {
                 @input="error = ''"
                 @keyup.enter="createBench"
               />
-              <p class="bg-surface-gray-2 mt-1.5 px-2.5 py-2 rounded text-ink-gray-6 text-xs">
+              <p class="bg-surface-gray-2 mt-1.5 px-2.5 py-2 rounded-4 text-ink-gray-6 text-xs">
                 Point this domain's DNS A record to this server <b>before</b> creating the bench. It
                 isn't provisioned automatically, so setup can't be reached until it resolves here.
               </p>

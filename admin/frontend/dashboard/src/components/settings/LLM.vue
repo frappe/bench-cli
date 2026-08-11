@@ -3,7 +3,7 @@
     <Spinner size="lg" class="text-ink-gray-4" />
   </div>
   <div v-else class="space-y-6">
-    <Alert v-if="!connected" theme="blue" title="Why connect an AI assistant?" :dismissible="false">
+    <Alert v-if="!connected" theme="blue" title="Why connect an AI assistant?">
       <template #description>
         <p class="text-ink-gray-6 text-p-sm">
           Connect any LLM provider supported by litellm to power assistant features, like explaining
@@ -30,10 +30,10 @@
     </div>
 
     <div class="space-y-4">
-      <Autocomplete
+      <Combobox
         label="Provider"
+        v-model="provider"
         :options="providerOptions"
-        :model-value="providerSelection"
         placeholder="Search providers…"
         @update:model-value="onProviderSelect"
       />
@@ -62,13 +62,12 @@
         placeholder="Your served model name"
       />
       <div v-else class="space-y-1.5">
-        <Autocomplete
+        <Combobox
           label="Model"
+          v-model="model"
           :options="modelOptions"
-          :model-value="modelSelection"
           :loading="modelsLoading"
           :placeholder="modelPlaceholder"
-          @update:model-value="(o) => (model = o?.value || '')"
         />
         <p v-if="modelsError" class="text-ink-red-6 text-p-sm">{{ modelsError }}</p>
         <p v-else-if="modelsHint" class="text-ink-gray-5 text-p-sm">{{ modelsHint }}</p>
@@ -114,7 +113,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { Alert, Autocomplete, Button, ErrorMessage, FormControl, Spinner, toast } from 'frappe-ui'
+import { Alert, Button, Combobox, ErrorMessage, FormControl, Spinner, toast } from 'frappe-ui'
 import { apiErrorMessage } from '@/api/client'
 import { settingsApi } from '@/api/settings'
 
@@ -145,13 +144,7 @@ const hasApiKey = computed(() => Boolean(apiKey.value.trim() || apiKeySet.value)
 const providerOptions = computed(() =>
   providers.value.map((p) => ({ label: p.label, value: p.value })),
 )
-const providerSelection = computed(
-  () => providerOptions.value.find((o) => o.value === provider.value) || null,
-)
 const modelOptions = computed(() => models.value.map((m) => ({ label: m, value: m })))
-const modelSelection = computed(() =>
-  model.value ? { label: model.value, value: model.value } : null,
-)
 const hasApiBase = computed(() => Boolean(apiBase.value.trim()))
 const apiBaseError = computed(() => {
   if (!provider.value || !needsApiBase.value || hasApiBase.value) return ''
@@ -200,8 +193,8 @@ async function fetchModels(providerValue) {
   }
 }
 
-function onProviderSelect(option) {
-  provider.value = option?.value || ''
+function onProviderSelect(value) {
+  provider.value = value || ''
   model.value = ''
   fetchModels(provider.value)
 }

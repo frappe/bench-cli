@@ -6,7 +6,7 @@
     :is="as"
     :type="as === 'button' ? 'button' : undefined"
     class="flex justify-between items-center gap-x-2.5 px-2.5 py-3"
-    :class="interactive ? 'w-full rounded transition-colors cursor-pointer text-left hover:bg-surface-alpha-gray-1' : ''"
+    :class="interactive ? 'w-full rounded-4 transition-colors cursor-pointer text-left hover:bg-surface-alpha-gray-1' : ''"
   >
     <div class="flex flex-col gap-1">
       <!-- Matches frappe-ui's InputLabel (text-base) / InputDescription (text-p-sm). -->

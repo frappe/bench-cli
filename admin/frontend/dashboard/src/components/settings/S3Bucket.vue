@@ -3,7 +3,7 @@
     <Spinner size="lg" class="text-ink-gray-4" />
   </div>
   <div v-else class="space-y-6">
-    <Alert v-if="!connected" theme="blue" title="Why connect object storage?" :dismissible="false">
+    <Alert v-if="!connected" theme="blue" title="Why connect object storage?">
       <template #description>
         <p class="text-ink-gray-6 text-p-sm">
           Connect S3-compatible object storage to send offsite backups and snapshots.

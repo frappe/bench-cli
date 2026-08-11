@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="hasSteps"
-    class="flex flex-col gap-1 p-1 border border-outline-gray-2 rounded-lg min-w-0"
+    class="flex flex-col gap-1 p-1 border border-outline-gray-2 rounded-6 min-w-0"
   >
     <TaskStep
       v-for="section in stepSections"

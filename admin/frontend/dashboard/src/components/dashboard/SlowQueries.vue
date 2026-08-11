@@ -16,7 +16,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { AxisChart } from 'frappe-ui'
+import { AxisChart } from 'frappe-ui/experimental'
 import ChartCard from '@/components/common/ChartCard.vue'
 
 const props = defineProps({ overview: { type: Object, default: null } })

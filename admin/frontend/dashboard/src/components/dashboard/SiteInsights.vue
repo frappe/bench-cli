@@ -3,7 +3,7 @@
     <SiteUptime :site-name="siteName" :window="window" />
 
     <template v-if="loading">
-      <Skeleton v-for="i in 12" :key="i" class="rounded-lg h-[340px]" />
+      <Skeleton v-for="i in 12" :key="i" class="rounded-6 h-[340px]" />
     </template>
     <ErrorMessage v-else-if="error" :message="error" class="sm:col-span-2" />
 
@@ -29,7 +29,8 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { AxisChart, ErrorMessage, Skeleton } from 'frappe-ui'
+import { ErrorMessage, Skeleton } from 'frappe-ui'
+import { AxisChart } from 'frappe-ui/experimental'
 import ChartCard from '@/components/common/ChartCard.vue'
 import SiteUptime from '@/components/dashboard/SiteUptime.vue'
 import { apiErrorMessage } from '@/api/client'

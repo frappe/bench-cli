@@ -5,10 +5,10 @@
     <div class="flex-1 py-2 min-w-0">
       <!-- Wrappers carry the real card's line-box heights so the swap shifts nothing. -->
       <div class="flex items-center h-4">
-        <Skeleton class="rounded h-3" :class="titleWidth" />
+        <Skeleton class="rounded-4 h-3" :class="titleWidth" />
       </div>
       <div class="flex items-center mt-0.5 h-5">
-        <Skeleton class="rounded h-2.5" :class="descriptionWidth" />
+        <Skeleton class="rounded-4 h-2.5" :class="descriptionWidth" />
       </div>
     </div>
   </div>

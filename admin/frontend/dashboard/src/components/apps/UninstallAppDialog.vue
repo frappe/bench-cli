@@ -15,7 +15,7 @@
         v-for="option in options"
         :key="option.value"
         type="button"
-        class="flex items-start gap-2.5 p-2.5 rounded text-left transition duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
+        class="flex items-start gap-2.5 p-2.5 rounded-4 text-left transition duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
         :class="mode === option.value ? 'bg-surface-gray-3' : 'hover:bg-surface-gray-2'"
         @click="mode = option.value"
       >

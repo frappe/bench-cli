@@ -44,9 +44,9 @@
 
     <!-- Loading state -->
     <template v-else-if="pageLoading">
-      <Skeleton v-if="!isHistorical" class="mb-6 rounded-lg h-[88px]" />
+      <Skeleton v-if="!isHistorical" class="mb-6 rounded-6 h-[88px]" />
       <div class="gap-4 grid grid-cols-1 sm:grid-cols-2 mb-6">
-        <Skeleton v-for="i in 6" :key="i" class="rounded-lg h-[340px]" />
+        <Skeleton v-for="i in 6" :key="i" class="rounded-6 h-[340px]" />
       </div>
     </template>
 
@@ -54,7 +54,7 @@
       <!-- Live stats bar: CPU / Memory / Storage -->
       <div
         v-if="liveStats"
-        class="bg-surface-white mb-6 border rounded-lg border-outline-gray-2 overflow-hidden"
+        class="bg-surface-white mb-6 border rounded-6 border-outline-gray-2 overflow-hidden"
       >
         <div class="flex sm:flex-row flex-col divide-outline-gray-2 sm:divide-x">
           <div
@@ -100,7 +100,7 @@
 
       <!-- Live mode collecting its first points, with the stat bar already up -->
       <div v-else-if="!isHistorical" class="gap-4 grid grid-cols-1 sm:grid-cols-2 mb-6">
-        <Skeleton v-for="i in 6" :key="i" class="rounded-lg h-[340px]" />
+        <Skeleton v-for="i in 6" :key="i" class="rounded-6 h-[340px]" />
       </div>
 
       <!-- WAF analytics (only renders when the WAF has logged activity) -->
@@ -112,7 +112,8 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { LoadingText, ErrorMessage, AxisChart, Skeleton } from 'frappe-ui'
+import { LoadingText, ErrorMessage, Skeleton } from 'frappe-ui'
+import { AxisChart } from 'frappe-ui/experimental'
 import ChartCard from '@/components/common/ChartCard.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import StickyToolbar from '@/components/common/StickyToolbar.vue'

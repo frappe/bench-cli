@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { Badge, Button, Dialog, ErrorMessage, ListView, Spinner } from 'frappe-ui'
+import { Badge, Button, Dialog, ErrorMessage, Spinner } from 'frappe-ui'
+import { ListView } from 'frappe-ui/experimental'
 import { useBenches } from '@/composables/benches/useBenches'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import LucidePlus from '~icons/lucide/plus'

@@ -31,7 +31,7 @@
           :href="`/editor/${encodeURIComponent(app.name)}`"
           target="_blank"
           rel="noopener"
-          class="group block bg-surface-white hover:bg-surface-gray-1 p-2.5 border border-outline-gray-2 hover:border-outline-gray-3 rounded-lg no-underline transition duration-150 ease-[var(--ease-out)]"
+          class="group block bg-surface-white hover:bg-surface-gray-1 p-2.5 border border-outline-gray-2 hover:border-outline-gray-3 rounded-6 no-underline transition duration-150 ease-[var(--ease-out)]"
         >
           <MarketplaceAppCard :app="app" class="-my-2">
             <template #actions><span /></template>

@@ -1,12 +1,12 @@
 <template>
   <PageHero v-if="loading">
-    <template #icon><Skeleton class="rounded-lg size-9 sm:size-10 shrink-0" /></template>
+    <template #icon><Skeleton class="rounded-6 size-9 sm:size-10 shrink-0" /></template>
     <template #title>
-      <Skeleton class="rounded w-40 h-4" />
+      <Skeleton class="rounded-4 w-40 h-4" />
       <Skeleton class="rounded-full w-14 h-5 shrink-0" />
     </template>
-    <template #subtitle><Skeleton class="rounded w-24 h-3.5" /></template>
-    <template #actions><Skeleton class="rounded w-28 h-8 sm:h-7" /></template>
+    <template #subtitle><Skeleton class="rounded-4 w-24 h-3.5" /></template>
+    <template #actions><Skeleton class="rounded-4 w-28 h-8 sm:h-7" /></template>
   </PageHero>
 
   <PageHero v-else icon="lucide-store">
@@ -47,7 +47,7 @@
     <!-- Mirrors one section of the real grid so apps land in place. -->
     <section v-if="loading" class="mt-12">
       <div class="flex items-center h-4">
-        <Skeleton class="rounded w-32 h-3.5" />
+        <Skeleton class="rounded-4 w-32 h-3.5" />
       </div>
       <div class="gap-x-6 gap-y-4 grid grid-cols-1 md:grid-cols-2 mt-3">
         <MarketplaceAppCardSkeleton v-for="i in 8" :key="i" :index="i - 1" />

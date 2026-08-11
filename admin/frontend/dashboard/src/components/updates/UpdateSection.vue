@@ -1,11 +1,11 @@
 <template>
   <details
     :open="open"
-    class="group/section rounded-lg border border-outline-gray-2 p-1"
+    class="group/section rounded-6 border border-outline-gray-2 p-1"
     @toggle="$emit('update:open', $event.target.open)"
   >
     <summary
-      class="flex items-center justify-between px-2.5 py-2 rounded transition-colors cursor-pointer select-none hover:bg-surface-gray-1"
+      class="flex items-center justify-between px-2.5 py-2 rounded-4 transition-colors cursor-pointer select-none hover:bg-surface-gray-1"
     >
       <div class="flex items-center gap-2">
         <span class="size-4 text-ink-gray-5 shrink-0" :class="icon" />

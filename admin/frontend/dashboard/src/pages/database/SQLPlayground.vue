@@ -14,7 +14,7 @@
     style="height: 75vh;"
   >
     <span
-      class="place-items-center grid bg-surface-gray-2 rounded-lg size-10 text-ink-gray-5 shrink-0"
+      class="place-items-center grid bg-surface-gray-2 rounded-6 size-10 text-ink-gray-5 shrink-0"
     >
       <span class="size-5 lucide-database" />
     </span>
@@ -32,7 +32,7 @@
 
   <div v-else class="flex flex-col gap-3">
     <!-- Editor card -->
-    <div class="border rounded-lg border-outline-gray-2 overflow-hidden transition-colors">
+    <div class="border rounded-6 border-outline-gray-2 overflow-hidden transition-colors">
       <div class="h-44 sm:h-[220px]">
         <SQLCodeEditor
           ref="editorRef"
@@ -83,7 +83,7 @@
     </div>
 
     <!-- Error -->
-    <Alert v-if="error" theme="red" title="Query failed" :dismissible="false">
+    <Alert v-if="error" theme="red" title="Query failed">
       <template #description>
         <p class="font-mono text-xs break-words whitespace-pre-wrap">{{ error }}</p>
       </template>
@@ -96,7 +96,7 @@
         <TabButtons v-model="activeTab" type="underline" :options="tabOptions" />
       </div>
 
-      <div v-if="currentResult" class="border rounded-lg border-outline-gray-2 overflow-hidden">
+      <div v-if="currentResult" class="border rounded-6 border-outline-gray-2 overflow-hidden">
         <!-- Write query success (no result set) -->
         <div
           v-if="!currentResult.columns.length"
@@ -182,7 +182,7 @@
         </button>
         <pre
           v-if="showSql"
-          class="bg-surface-gray-1 mt-1.5 px-3 py-2 border rounded-lg border-outline-gray-2 overflow-x-auto text-ink-gray-7 text-xs break-words whitespace-pre-wrap"
+          class="bg-surface-gray-1 mt-1.5 px-3 py-2 border rounded-6 border-outline-gray-2 overflow-x-auto text-ink-gray-7 text-xs break-words whitespace-pre-wrap"
           style="font-family: ui-monospace, SFMono-Regular, monospace;"
         >{{ currentResult.query }}</pre>
       </div>
@@ -200,7 +200,7 @@
         the database. Are you sure you want to continue?
       </p>
       <pre
-        class="bg-surface-gray-1 mt-3 px-3 py-2 border rounded-lg border-outline-gray-2 max-h-40 overflow-y-auto text-ink-gray-7 text-xs break-words whitespace-pre-wrap"
+        class="bg-surface-gray-1 mt-3 px-3 py-2 border rounded-6 border-outline-gray-2 max-h-40 overflow-y-auto text-ink-gray-7 text-xs break-words whitespace-pre-wrap"
         style="font-family: ui-monospace, SFMono-Regular, monospace;"
       >{{ pendingQuery }}</pre>
       <div class="flex justify-end gap-2 mt-4">

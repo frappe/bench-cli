@@ -3,7 +3,7 @@
     <Spinner size="lg" class="text-ink-gray-4" />
   </div>
   <div v-else class="space-y-6">
-    <Alert v-if="!connected" theme="blue" title="Connect GitHub" :dismissible="false">
+    <Alert v-if="!connected" theme="blue" title="Connect GitHub">
       <template #description>
         <p class="text-ink-gray-6 text-p-sm">
           Install private apps and browse your repos. Paste a

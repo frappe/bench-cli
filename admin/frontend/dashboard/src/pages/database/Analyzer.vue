@@ -16,7 +16,7 @@
 
     <div
       v-else-if="diagnostics && !diagnostics.supported"
-      class="flex flex-col items-center gap-1 bg-surface-white py-14 border rounded-lg border-outline-gray-2 text-center"
+      class="flex flex-col items-center gap-1 bg-surface-white py-14 border rounded-6 border-outline-gray-2 text-center"
     >
       <span class="size-6 text-ink-gray-3 lucide-database" />
       <p class="font-medium text-ink-gray-7 text-sm">No database server</p>
@@ -180,7 +180,7 @@
         Any bench sharing this server may own it.
       </p>
 
-      <dl class="space-y-1.5 bg-surface-gray-1 mt-3 p-3 rounded-lg text-xs">
+      <dl class="space-y-1.5 bg-surface-gray-1 mt-3 p-3 rounded-6 text-xs">
         <div
           v-for="item in killDetails"
           :key="item.label"
@@ -216,7 +216,7 @@
         used for point-in-time recovery and replication.
       </p>
 
-      <dl class="space-y-1.5 bg-surface-gray-1 mt-3 p-3 rounded-lg text-xs">
+      <dl class="space-y-1.5 bg-surface-gray-1 mt-3 p-3 rounded-6 text-xs">
         <div
           v-for="item in purgeDetails"
           :key="item.label"
@@ -243,14 +243,11 @@ import {
   Dialog,
   ErrorMessage,
   FormControl,
-  ListHeader,
-  ListRowItem,
-  ListRows,
-  ListView,
   LoadingText,
   Tooltip,
   toast,
 } from 'frappe-ui'
+import { ListHeader, ListRowItem, ListRows, ListView } from 'frappe-ui/experimental'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiErrorMessage } from '@/api/client'

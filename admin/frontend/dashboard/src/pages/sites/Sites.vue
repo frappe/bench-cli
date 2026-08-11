@@ -51,7 +51,7 @@
         <div
           v-for="site in filteredSites"
           :key="site.name"
-          class="flex items-center gap-3 bg-surface-base p-2 sm:px-3 sm:py-2 border rounded-lg border-outline-gray-2 hover:border-outline-gray-3 transition-colors"
+          class="flex items-center gap-3 bg-surface-base p-2 sm:px-3 sm:py-2 border rounded-6 border-outline-gray-2 hover:border-outline-gray-3 transition-colors"
         >
           <RouterLink
             :to="{ name: 'SiteDetail', params: { name: site.name } }"
@@ -59,7 +59,7 @@
           >
             <!-- Icon -->
             <div
-              class="place-items-center grid bg-surface-gray-2 rounded size-8 text-ink-gray-6 shrink-0"
+              class="place-items-center grid bg-surface-gray-2 rounded-4 size-8 text-ink-gray-6 shrink-0"
             >
               <span class="size-4 lucide-globe"></span>
             </div>
@@ -199,10 +199,10 @@ import {
   Dropdown,
   ErrorMessage,
   FormControl,
-  ListView,
   TabButtons,
   toast,
 } from 'frappe-ui'
+import { ListView } from 'frappe-ui/experimental'
 import EmptyState from '@/components/common/EmptyState.vue'
 import NewSiteDialog from '@/components/sites/NewSiteDialog.vue'
 import SiteSkeleton from '@/components/sites/SiteSkeleton.vue'

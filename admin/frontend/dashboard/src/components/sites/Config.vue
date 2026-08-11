@@ -24,7 +24,7 @@
     <!-- Config table -->
     <div
       v-if="!rows.length"
-      class="py-12 border border-dashed rounded-xl border-outline-gray-2 text-ink-gray-5 text-sm text-center"
+      class="py-12 border border-dashed rounded-7 border-outline-gray-2 text-ink-gray-5 text-sm text-center"
     >
       No config keys.
     </div>
@@ -111,7 +111,8 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Button, Dialog, Dropdown, ErrorMessage, ListView, ListRowItem, TextInput } from 'frappe-ui'
+import { Button, Dialog, Dropdown, ErrorMessage, TextInput } from 'frappe-ui'
+import { ListView, ListRowItem } from 'frappe-ui/experimental'
 import { sitesApi } from '@/api/sites'
 import { useSite } from '@/composables/sites/useSite'
 

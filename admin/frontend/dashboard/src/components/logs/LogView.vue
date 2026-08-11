@@ -5,7 +5,7 @@
     ref="el"
     class="bg-surface-gray-2 overflow-auto font-mono text-ink-gray-8 text-p-sm"
     @scroll="onScroll"
-    :class="[wrap ? 'whitespace-pre-wrap' : 'whitespace-pre', rounded ? 'rounded' : '', fill ? 'flex-1 h-0' : 'max-h-[50vh]', rows ? '' : 'px-4 py-3']"
+    :class="[wrap ? 'whitespace-pre-wrap' : 'whitespace-pre', rounded-4 ? 'rounded-4' : '', fill ? 'flex-1 h-0' : 'max-h-[50vh]', rows ? '' : 'px-4 py-3']"
   >
     <p v-if="!lines.length" class="text-ink-gray-4" :class="rows ? 'px-4 py-3' : ''">
       {{ emptyText }}

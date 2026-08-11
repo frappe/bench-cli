@@ -1,7 +1,7 @@
 <template>
   <div>
     <div
-      class="flex items-center gap-3 px-2.5 py-2 rounded transition-colors"
+      class="flex items-center gap-3 px-2.5 py-2 rounded-4 transition-colors"
       :class="hasOutput ? 'cursor-pointer hover:bg-surface-gray-1' : ''"
       @click="toggle"
     >

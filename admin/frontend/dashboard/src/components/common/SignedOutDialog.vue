@@ -10,7 +10,7 @@
       aria-labelledby="signed-out-title"
     >
       <div
-        class="flex flex-col items-start gap-4 bg-surface-elevation-1 shadow-2xl p-6 border border-outline-gray-1 rounded-xl w-full max-w-sm"
+        class="flex flex-col items-start gap-4 bg-surface-elevation-1 shadow-2xl p-6 border border-outline-gray-1 rounded-7 w-full max-w-sm"
       >
         <div class="flex justify-center items-center bg-surface-gray-2 rounded-full size-9">
           <LucideLock class="size-4 text-ink-gray-6" />
