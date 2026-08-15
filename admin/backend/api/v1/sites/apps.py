@@ -64,6 +64,7 @@ def site_apps(name: str):
                     "name": app_name,
                     "title": info.title,
                     "description": info.description,
+                    "logo_url": info.logo_url,
                     "branch": info.branch,
                     "commit": info.current_commit,
                     "version": info.installed_version,

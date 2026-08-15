@@ -145,8 +145,11 @@ export function useMarketplace(initialSiteName = '') {
       .filter((app) => app.name !== 'frappe' && !registryNames.value.has(app.name))
       .map((app) => ({
         name: app.name,
-        title: toSentenceCase(app.title || app.name),
+        // Prefer explicit app_title from pyproject; only sentence-case the raw package name.
+        title:
+          app.title && app.title !== app.name ? app.title : toSentenceCase(app.name),
         description: app.description,
+        logo_url: app.logo_url || '',
         compatible: true,
         inBench: true,
       })),
