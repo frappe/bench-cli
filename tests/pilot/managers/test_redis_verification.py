@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pilot.config import RedisConfig
+from pilot.core.bench.initializer import BenchInitializer
 from pilot.exceptions import BenchError
 from pilot.managers.redis import RedisManager
 
@@ -41,3 +42,22 @@ def test_verify_installed_never_attempts_package_installation() -> None:
         manager.verify_installed()
 
     get_package_manager.assert_not_called()
+
+
+def test_initializer_verifies_redis_without_installing_it() -> None:
+    bench = MagicMock()
+    bench.config.db_type = "sqlite"
+    bench.config.redis = RedisConfig()
+    initializer = BenchInitializer(bench)
+    redis_manager = MagicMock()
+
+    with (
+        patch("pilot.managers.packages.get_package_manager", return_value=MagicMock()),
+        patch("pilot.managers.redis.RedisManager", return_value=redis_manager),
+        patch.object(initializer, "_install_build_headers"),
+        patch("pilot.managers.environment.PythonEnvManager.ensure_python"),
+    ):
+        initializer._install_system_packages()
+
+    redis_manager.verify_installed.assert_called_once_with()
+    redis_manager.install.assert_not_called()
