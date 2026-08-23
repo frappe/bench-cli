@@ -154,7 +154,10 @@ class BenchInitializer:
         else:
             self._provision_or_verify(self._mariadb_manager(), "MariaDB")
 
-        RedisManager(self.bench.config.redis, self.bench).install()
+        # Redis is a host-level dependency provisioned by install.sh. `pilot init`
+        # deliberately runs without root privileges, so it must only verify Redis
+        # is available instead of attempting apt/dnf/pacman installation here.
+        RedisManager(self.bench.config.redis, self.bench).verify_installed()
         self._install_build_headers(pkg)
         PythonEnvManager(self.bench).ensure_python()
 
