@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
+
+import pytest
 
 from pilot.config import (
     AppConfig,
@@ -189,3 +192,32 @@ def test_lite_off_keeps_the_ordinary_process_set(tmp_path: Path) -> None:
     assert "socketio" in names
     assert "worker_default_short_1" in names
     assert "frappe.runner" not in _web(bench).argv
+
+
+def test_a_new_bench_is_created_in_lite_mode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from pilot.core.bench.creator import BenchCreator
+
+    monkeypatch.setattr(BenchCreator, "_port_is_live", staticmethod(lambda port: False))
+    target = tmp_path / "benches" / "fresh"
+    BenchCreator(target, "fresh").run()
+
+    with open(target / "bench.toml", "rb") as f:
+        data = tomllib.load(f)
+    assert data["lite_mode"]["enabled"] is True
+
+
+def test_an_existing_bench_without_the_section_stays_off(tmp_path: Path) -> None:
+    """Lite is the default for a new bench only. A bench.toml written before
+    the default changed carries no [lite_mode], and must keep the ordinary set."""
+    bench_toml = tmp_path / "bench.toml"
+    bench_toml.write_text(
+        '[bench]\nname = "old"\npython = "3.14"\n\n[[apps]]\n'
+        'name = "frappe"\nrepo = "https://github.com/frappe/frappe"\nbranch = "version-16"\n',
+        encoding="utf-8",
+    )
+
+    assert BenchConfig.read(tmp_path).lite_mode.enabled is False
+
+    BenchConfig.write_flat(tmp_path, "old", {"admin_domain": "old.example.com"})
+
+    assert "lite_mode" not in tomllib.loads(bench_toml.read_text(encoding="utf-8"))

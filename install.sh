@@ -267,9 +267,10 @@ disable_system_services() {
 install_system_packages() {
     [ "$DISTRO" = "unknown" ] && return 0
     # Root always runs this (idempotent, and bare containers need it before
-    # useradd); the bench user only when a base tool is genuinely missing.
+    # useradd). A non-root install may skip it only when the complete host stack
+    # is already present, such as the second pass after root provisioning.
     if ! is_root; then
-        base_tools_present && return 0
+        system_packages_present && return 0
         if ! command -v sudo >/dev/null 2>&1; then
             echo "sudo is not installed and you are not root, so base packages cannot"
             echo "be installed. Re-run this installer as root first, then as the bench user:"
@@ -298,6 +299,29 @@ base_tools_present() {
     for tool in $tools; do
         command -v "$tool" >/dev/null 2>&1 || return 1
     done
+    return 0
+}
+
+system_packages_present() {
+    base_tools_present || return 1
+
+    case "$DISTRO" in
+        macos)
+            packages="mariadb@$MARIADB_VERSION postgresql@$POSTGRES_VERSION redis nginx certbot" ;;
+        debian|ubuntu)
+            packages="mariadb-server mariadb-client libmariadb-dev postgresql postgresql-client libpq-dev pkg-config redis-server nginx certbot supervisor libnginx-mod-http-modsecurity" ;;
+        fedora)
+            packages="mariadb-server mariadb mariadb-connector-c-devel postgresql-server postgresql libpq-devel pkgconf-pkg-config valkey nginx certbot supervisor" ;;
+        arch)
+            packages="mariadb mariadb-clients mariadb-libs postgresql postgresql-libs pkgconf redis nginx certbot supervisor" ;;
+        *)
+            return 1 ;;
+    esac
+
+    for package in $packages; do
+        pkg_installed "$package" || return 1
+    done
+    command -v node >/dev/null 2>&1 || return 1
     return 0
 }
 

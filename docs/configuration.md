@@ -88,6 +88,10 @@ together - instead of separate web, socketio and worker processes. Every key bel
 becomes a flag on `python -m frappe.runner`, which is what the `web` process runs.
 The process manager still supervises it; only the process set changes.
 
+A new bench is created with `enabled = true`. A bench.toml written before this was
+the default carries no `[lite_mode]` table, and keeps the separate process set until
+you turn lite mode on in Settings. Turning it off writes `enabled = false`.
+
 ```toml
 [lite_mode]
 enabled = true

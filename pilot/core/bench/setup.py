@@ -60,8 +60,9 @@ class ProductionSetup:
 
             self._build_admin_for_production()
 
-            self._persist_production_state()
             self._setup_monitoring()
+            self._setup_log_shipping()
+            self._persist_production_state()
         except BaseException:
             # A later step failed but the new admin route is already live at the
             # provider; release it so a failed setup leaves no dead external route.
@@ -142,6 +143,7 @@ class ProductionSetup:
 
     def _setup_monitoring(self):
         from pilot.core.server.monitoring_config import MonitorConfigurator
+        from pilot.core.site.storage.systemd import SiteStorageConfigurator
         from pilot.core.site.uptime_monitoring_config import UptimeMonitorConfigurator
 
         monitor = MonitorConfigurator(self.bench)
@@ -151,6 +153,20 @@ class ProductionSetup:
         uptime = UptimeMonitorConfigurator(self.bench)
         uptime.install()
         uptime.setup()
+
+        SiteStorageConfigurator().install()
+
+    def _setup_log_shipping(self) -> None:
+        """Install Fluent Bit as a systemd service, if a logs endpoint is configured."""
+        from pilot.managers.fluentbit import LogsConfigurator
+
+        log_config = self.bench.config.logs
+        if not log_config.is_enabled:
+            return
+
+        configurator = LogsConfigurator(self.bench)
+        configurator.setup()
+        configurator.install(log_config)
 
     def _persist_production_state(self) -> None:
         """Write the production state to bench.toml LAST, so the switcher never
@@ -217,6 +233,7 @@ class ProductionSetup:
             data.get("production", {}).pop("nginx", None)
 
     def _write_dns_multitenancy(self) -> None:
+        self.bench.sites_path.mkdir(parents=True, exist_ok=True)
         common_config_path = self.bench.sites_path / "common_site_config.json"
         existing_data: dict = {}
         if common_config_path.exists():
