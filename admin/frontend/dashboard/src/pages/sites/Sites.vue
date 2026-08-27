@@ -114,14 +114,16 @@ const listRows = computed(() =>
 )
 
 const loginAsAdmin = async (site) => {
-  return openSiteLogin(() => sitesApi.loginLink(site.name))
+  return openSiteLogin(() => sitesApi.loginLink(site.name), {
+    onHint: (hint) => toast.info(hint),
+  })
 }
 
 const openSite = (site) => {
   toast.promise(loginAsAdmin(site), {
     loading: 'Logging in as admin',
     success: 'Logged in as admin',
-    error: 'Could not log in as admin',
+    error: (caught) => caught?.message || 'Could not log in as admin',
   })
 }
 

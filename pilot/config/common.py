@@ -7,6 +7,7 @@ from pilot.config.alert_limit import ResourceLimitConfig
 from pilot.config.central import CentralConfig
 from pilot.config.datum import DatumConfig
 from pilot.config.letsencrypt import LetsEncryptConfig
+from pilot.config.logs import LogsConfig
 from pilot.config.mariadb import MariaDBConfig
 from pilot.config.postgres import PostgresConfig
 from pilot.internal.atomic_file import atomic_write_private_text
@@ -19,16 +20,17 @@ FILENAME = "common_config.toml"
 class CommonConfig:
     """Settings shared by every bench under one benches directory: one MariaDB
     server, one Postgres server, one ACME account, one trusted admin JWKS
-    issuer, one Central enrolment, one metrics destination, one set of host
-    resource alert limits. Stored once at ``common_config.toml`` next to the
-    bench folders. BenchConfig is the only reader/writer; other code reaches
-    these values through a bench's own config instead."""
+    issuer, one Central enrolment, one metrics destination, one logs
+    destination. Stored once at ``common_config.toml`` next to the bench
+    folders. BenchConfig is the only reader/writer; other code reaches these
+    values through a bench's own config instead."""
 
     mariadb: MariaDBConfig = field(default_factory=MariaDBConfig)
     postgres: PostgresConfig = field(default_factory=PostgresConfig)
     letsencrypt: LetsEncryptConfig = field(default_factory=LetsEncryptConfig)
     central: CentralConfig = field(default_factory=CentralConfig)
     datum: DatumConfig = field(default_factory=DatumConfig)
+    logs: LogsConfig = field(default_factory=LogsConfig)
     resource_limits: ResourceLimitConfig = field(default_factory=ResourceLimitConfig)
     jwks_url: str = ""
     jwks_audience: str = ""
@@ -55,6 +57,7 @@ class CommonConfig:
             letsencrypt=LetsEncryptConfig.from_dict(data.get("letsencrypt", {})),
             central=CentralConfig.from_dict(data.get("central", {})),
             datum=DatumConfig.from_dict(data.get("datum", {})),
+            logs=LogsConfig.from_dict(data.get("logs", {})),
             resource_limits=ResourceLimitConfig(
                 **_known_fields(ResourceLimitConfig, data.get("resource_limits", {}))
             ),
@@ -91,6 +94,12 @@ class CommonConfig:
             data["central"] = self._central_section()
         if self.datum != DatumConfig():
             data["datum"] = {"endpoint": self.datum.endpoint, "token": self.datum.token}
+        if self.logs != LogsConfig():
+            data["logs"] = {
+                "endpoint": self.logs.endpoint,
+                "token": self.logs.token,
+                "enabled": self.logs.enabled,
+            }
         if self.resource_limits != ResourceLimitConfig():
             data["resource_limits"] = self._resource_limits_section()
         if self.jwks_url:

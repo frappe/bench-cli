@@ -55,6 +55,10 @@ _RELOAD_REQUEST_FILE = "reload.request"
 # Both must survive it, so only app-code processes are restarted.
 _NON_RELOADABLE = frozenset({"admin", "admin-ui", "redis_cache", "redis_queue", "watch"})
 
+# Stopped last, so their clients are already gone and cannot log a lost connection.
+_DATASTORES = frozenset({"redis_cache", "redis_queue"})
+_STOP_GRACE_SECONDS = 5
+
 _COLORS = [
     "\033[36m",
     "\033[32m",
@@ -259,7 +263,7 @@ class ProcessManager:
         with contextlib.suppress(ProcessLookupError, OSError):
             os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         try:
-            proc.wait(timeout=5)
+            proc.wait(timeout=_STOP_GRACE_SECONDS)
         except subprocess.TimeoutExpired:
             with contextlib.suppress(ProcessLookupError, OSError):
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
@@ -336,16 +340,25 @@ class ProcessManager:
             sys.stdout.flush()
 
     def _stop_all(self) -> None:
-        for proc in self._procs.values():
+        """Drain the workload before redis. Killing them together leaves the workers
+        and the realtime bridge retrying a socket that is already closed."""
+        names = list(self._procs)
+        self._stop_group([name for name in names if name not in _DATASTORES])
+        self._stop_group([name for name in names if name in _DATASTORES])
+        self.reload_request_file.unlink(missing_ok=True)
+
+    def _stop_group(self, names: list[str]) -> None:
+        """SIGTERM the whole group, then reap it, so the grace period is shared."""
+        procs = [self._procs[name] for name in names if name in self._procs]
+        for proc in procs:
             with contextlib.suppress(ProcessLookupError, OSError):
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        for proc in self._procs.values():
+        for proc in procs:
             try:
-                proc.wait(timeout=5)
+                proc.wait(timeout=_STOP_GRACE_SECONDS)
             except subprocess.TimeoutExpired:
                 with contextlib.suppress(ProcessLookupError, OSError):
                     os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        self.reload_request_file.unlink(missing_ok=True)
 
     def _cleanup_proc_pid_files(self) -> None:
         for name in self._procs:

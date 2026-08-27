@@ -339,6 +339,13 @@ class MariaDB(Database):
             return None
         return str(self.get_scalar("SELECT @@datadir"))
 
+    def get_schema_sizes(self) -> dict[str, int]:
+        result = self.execute(
+            "SELECT table_schema, COALESCE(SUM(data_length + index_length + data_free), 0) "
+            "FROM information_schema.TABLES GROUP BY table_schema"
+        )
+        return {row[0]: int(row[1]) for row in result.rows if row[0] is not None}
+
     def get_storage_components(self) -> list[StorageComponent]:
         data_dir = Path(self.get_data_directory() or ".")
         return [

@@ -11,7 +11,8 @@ import {
   siteRoute,
   statusConfig,
   taskScope,
-  taskTiming,
+  taskDuration,
+  taskLastRun,
 } from './taskFormat.ts'
 
 test('queued tasks have their own presentation', () => {
@@ -111,26 +112,22 @@ test('cancelling follows the flag the backend sends', () => {
   assert.equal(isTaskCancellable(null), false)
 })
 
-test('taskTiming leads a queued task with its place in the queue', () => {
+test('taskDuration gives a queued task its place in the queue', () => {
   const queued = { status: 'queued', queue_position: 3, queued_at: new Date().toISOString() }
-  assert.match(taskTiming(queued), /^#3 in queue · /)
+  assert.equal(taskDuration(queued), '#3 in queue')
   // Nothing has started, so a stale duration from an earlier attempt is ignored.
-  assert.doesNotMatch(taskTiming({ ...queued, duration_seconds: 42 }), /took/)
+  assert.equal(taskDuration({ ...queued, duration_seconds: 42 }), '#3 in queue')
 })
 
-test('taskTiming omits the position when the queue has not reported one', () => {
-  const queued = { status: 'queued', queued_at: new Date().toISOString() }
-  assert.doesNotMatch(taskTiming(queued), /queue/)
-  assert.doesNotMatch(taskTiming(queued), /^ · /)
+test('taskDuration is empty when the queue has not reported a position', () => {
+  assert.equal(taskDuration({ status: 'queued', queued_at: new Date().toISOString() }), '')
 })
 
-test('taskTiming reports how long a finished task took', () => {
-  const done = { status: 'success', duration_seconds: 93, started_at: new Date().toISOString() }
-  assert.match(taskTiming(done), /^took 1m 33s · /)
+test('taskDuration reports how long a finished task took', () => {
+  assert.equal(taskDuration({ status: 'success', duration_seconds: 93 }), '1m 33s')
 })
 
-test('taskTiming falls back to the queued time when a task never started', () => {
-  const killed = { status: 'killed', queued_at: new Date().toISOString() }
-  assert.equal(taskTiming(killed).includes('took'), false)
-  assert.equal(taskTiming(killed).startsWith(' · '), false)
+test('taskLastRun falls back to the queued time when a task never started', () => {
+  const queuedAt = new Date(Date.now() - 3 * 60 * 1000).toISOString()
+  assert.equal(taskLastRun({ status: 'killed', queued_at: queuedAt }), relativeTime(queuedAt))
 })

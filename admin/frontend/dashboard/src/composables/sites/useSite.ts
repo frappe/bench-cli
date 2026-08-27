@@ -111,8 +111,8 @@ export const useSite = (name) => {
     await _fetchBackups()
   }
 
-  const login = async () => {
-    return openSiteLogin(() => sitesApi.loginLink(name))
+  const login = async (options = {}) => {
+    return openSiteLogin(() => sitesApi.loginLink(name), options)
   }
 
   const backup = async () => {
