@@ -57,6 +57,10 @@ Task-starting endpoints should return:
 
 `created` is useful for idempotent submissions.
 
+### Git Branches
+
+`GET /git/branches?repo=...` runs local `git ls-remote --heads`, so Git must be available on the Pilot host. It returns all remote branch names and puts the remote default first.
+
 ### Site Apps
 
 `GET /sites/<name>/apps` returns the apps in use on the site, disabled ones excluded, plus `can_disable` for whether this bench's Frappe supports disabling at all.
