@@ -79,12 +79,15 @@ def _process_has_bench_root(pid: int, bench_root: Path) -> bool:
 _RELOAD_REQUEST_FILE = "reload.request"
 _STOP_WAIT_SECONDS = 15.0
 _STOP_POLL_SECONDS = 0.2
-_CHILD_STOP_SECONDS = 5.0
 _SUPERVISOR_STOP_SECONDS = 30.0
 BENCH_ROOT_ENV = "PILOT_BENCH_ROOT"
 # Redis holds the job queue, and the admin plane is what issues the reload.
 # Both must survive it, so only app-code processes are restarted.
 _NON_RELOADABLE = frozenset({"admin", "admin-ui", "redis_cache", "redis_queue", "watch"})
+
+# Stopped last, so their clients are already gone and cannot log a lost connection.
+_DATASTORES = frozenset({"redis_cache", "redis_queue"})
+_STOP_GRACE_SECONDS = 5
 
 _COLORS = [
     "\033[36m",
@@ -354,7 +357,7 @@ class ProcessManager:
     def _terminate(self, proc: subprocess.Popen) -> None:
         self._signal_group(proc, signal.SIGTERM)
         try:
-            proc.wait(timeout=_CHILD_STOP_SECONDS)
+            proc.wait(timeout=_STOP_GRACE_SECONDS)
         except subprocess.TimeoutExpired:
             self._signal_group(proc, signal.SIGKILL)
 
@@ -427,19 +430,27 @@ class ProcessManager:
             sys.stdout.flush()
 
     def _stop_all(self) -> None:
-        # SIGTERM everyone first, then share one deadline, so slow children
-        # drain concurrently rather than 5s each.
-        deadline = time.monotonic() + _CHILD_STOP_SECONDS
-        for proc in self._procs.values():
+        """Drain the workload before redis. Killing them together leaves the workers
+        and the realtime bridge retrying a socket that is already closed."""
+        names = list(self._procs)
+        self._stop_group([name for name in names if name not in _DATASTORES])
+        self._stop_group([name for name in names if name in _DATASTORES])
+        self.reload_request_file.unlink(missing_ok=True)
+
+    def _stop_group(self, names: list[str]) -> None:
+        """SIGTERM the whole group first, then share one deadline, so slow
+        children drain concurrently and get reaped after a kill."""
+        procs = [self._procs[name] for name in names if name in self._procs]
+        deadline = time.monotonic() + _STOP_GRACE_SECONDS
+        for proc in procs:
             self._signal_group(proc, signal.SIGTERM)
-        for proc in self._procs.values():
+        for proc in procs:
             try:
                 proc.wait(timeout=max(deadline - time.monotonic(), 0))
             except subprocess.TimeoutExpired:
                 self._signal_group(proc, signal.SIGKILL)
                 with contextlib.suppress(subprocess.TimeoutExpired):
-                    proc.wait(timeout=_CHILD_STOP_SECONDS)
-        self.reload_request_file.unlink(missing_ok=True)
+                    proc.wait(timeout=_STOP_GRACE_SECONDS)
 
     def _cleanup_proc_pid_files(self) -> None:
         for name in self._procs:

@@ -35,7 +35,7 @@ class ImportCheck:
         # Whatever is left has to come from this app's own dependencies, so
         # install it in a throwaway venv and ask there.
         try:
-            self.tmp_env.create(app.bench.apps_path / "frappe")
+            self.tmp_env.create(app.bench)
             self.tmp_env.install_app(app, self._dependency_paths(app))
             self._check_imports(app, locations, unresolved)
         finally:

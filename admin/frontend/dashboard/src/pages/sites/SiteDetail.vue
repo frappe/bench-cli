@@ -96,7 +96,7 @@ watch(
 const isMobile = useIsMobile()
 
 const openSite = () => {
-  window.open(`https://${site.value.name}/desk`, '_blank')
+  window.open(`${site.value.url}/desk`, '_blank')
 }
 
 const settingUpSite = ref(false)
@@ -120,10 +120,10 @@ const goToAnalytics = () => {
 }
 
 const loginAsAdmin = () => {
-  toast.promise(login(), {
+  toast.promise(login({ onHint: (hint) => toast.info(hint) }), {
     loading: 'Logging in as admin',
     success: 'Logged in as admin',
-    error: 'Could not log in as admin',
+    error: (caught) => caught?.message || 'Could not log in as admin',
   })
 }
 
