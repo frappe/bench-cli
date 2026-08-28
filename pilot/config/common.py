@@ -7,9 +7,9 @@ from pilot.config.alert_limit import ResourceLimitConfig
 from pilot.config.central import CentralConfig
 from pilot.config.datum import DatumConfig
 from pilot.config.letsencrypt import LetsEncryptConfig
+from pilot.config.logs import LogsConfig
 from pilot.config.mariadb import MariaDBConfig
 from pilot.config.postgres import PostgresConfig
-from pilot.config.secret_box import decrypt, encrypt
 from pilot.internal.atomic_file import exclusive_file_lock, replace_private_text_locked
 from pilot.internal.toml import ConfigDict, Toml
 
@@ -20,16 +20,17 @@ FILENAME = "common_config.toml"
 class CommonConfig:
     """Settings shared by every bench under one benches directory: one MariaDB
     server, one Postgres server, one ACME account, one trusted admin JWKS
-    issuer, one Central enrolment, one metrics destination, one set of host
-    resource alert limits. Stored once at ``common_config.toml`` next to the
-    bench folders. BenchConfig is the only reader/writer; other code reaches
-    these values through a bench's own config instead."""
+    issuer, one Central enrolment, one metrics destination, one logs
+    destination. Stored once at ``common_config.toml`` next to the bench
+    folders. BenchConfig is the only reader/writer; other code reaches these
+    values through a bench's own config instead."""
 
     mariadb: MariaDBConfig = field(default_factory=MariaDBConfig)
     postgres: PostgresConfig = field(default_factory=PostgresConfig)
     letsencrypt: LetsEncryptConfig = field(default_factory=LetsEncryptConfig)
     central: CentralConfig = field(default_factory=CentralConfig)
     datum: DatumConfig = field(default_factory=DatumConfig)
+    logs: LogsConfig = field(default_factory=LogsConfig)
     resource_limits: ResourceLimitConfig = field(default_factory=ResourceLimitConfig)
     jwks_url: str = ""
     jwks_audience: str = ""
@@ -51,16 +52,13 @@ class CommonConfig:
         bench.toml that still carries these tables pre-migration)."""
         admin = data.get("admin", {})
         resource_limits = _known_fields(ResourceLimitConfig, data.get("resource_limits", {}))
-        if benches_root is not None:
-            resource_limits["smtp_password"] = decrypt(
-                benches_root, resource_limits.get("smtp_password", "")
-            )
         return cls(
             mariadb=MariaDBConfig(**_known_fields(MariaDBConfig, data.get("mariadb", {}))),
             postgres=PostgresConfig(**_known_fields(PostgresConfig, data.get("postgres", {}))),
             letsencrypt=LetsEncryptConfig.from_dict(data.get("letsencrypt", {})),
             central=CentralConfig.from_dict(data.get("central", {})),
             datum=DatumConfig.from_dict(data.get("datum", {})),
+            logs=LogsConfig.from_dict(data.get("logs", {})),
             resource_limits=ResourceLimitConfig(**resource_limits),
             jwks_url=admin.get("jwks_url", ""),
             jwks_audience=admin.get("jwks_audience", ""),
@@ -68,14 +66,10 @@ class CommonConfig:
 
     def write(self, benches_root: Path) -> None:
         path = self.path(benches_root)
-        # The smtp_password encryption key is created lazily on first save, so it
-        # must be built under the same lock as the write: two concurrent first
-        # saves outside this lock could each mint their own key and strand
-        # whichever ciphertext lands second, undecryptable, on disk.
         with exclusive_file_lock(path):
-            replace_private_text_locked(path, Toml.dumps(self._to_toml_dict(benches_root)))
+            replace_private_text_locked(path, Toml.dumps(self._to_toml_dict()))
 
-    def _to_toml_dict(self, benches_root: Path) -> ConfigDict:
+    def _to_toml_dict(self) -> ConfigDict:
         data: ConfigDict = {
             "mariadb": {
                 "host": self.mariadb.host,
@@ -101,10 +95,14 @@ class CommonConfig:
             data["central"] = self._central_section()
         if self.datum != DatumConfig():
             data["datum"] = {"endpoint": self.datum.endpoint, "token": self.datum.token}
+        if self.logs != LogsConfig():
+            data["logs"] = {
+                "endpoint": self.logs.endpoint,
+                "token": self.logs.token,
+                "enabled": self.logs.enabled,
+            }
         if self.resource_limits != ResourceLimitConfig():
-            limits = asdict(self.resource_limits)
-            limits["smtp_password"] = encrypt(benches_root, limits["smtp_password"])
-            data["resource_limits"] = limits
+            data["resource_limits"] = asdict(self.resource_limits)
         if self.jwks_url:
             data["admin"] = {"jwks_url": self.jwks_url, "jwks_audience": self.jwks_audience}
         return data

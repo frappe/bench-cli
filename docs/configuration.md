@@ -88,6 +88,10 @@ together - instead of separate web, socketio and worker processes. Every key bel
 becomes a flag on `python -m frappe.runner`, which is what the `web` process runs.
 The process manager still supervises it; only the process set changes.
 
+A new bench is created with `enabled = true`. A bench.toml written before this was
+the default carries no `[lite_mode]` table, and keeps the separate process set until
+you turn lite mode on in Settings. Turning it off writes `enabled = false`.
+
 ```toml
 [lite_mode]
 enabled = true
@@ -221,12 +225,6 @@ memory_usage_limit = 90
 disk_space_limit = 0
 site_uptime = true
 webhook_endpoints = { "https://alerts.example.com/pilot" = "bearer-token" }
-smtp_server = "smtp.example.com"
-smtp_port = 587
-smtp_email = "alerts@example.com"
-smtp_login = ""
-smtp_password = ""
-smtp_use_ssl = false
 email_recipients = ["ops@example.com"]
 ```
 
@@ -234,24 +232,35 @@ email_recipients = ["ops@example.com"]
 
 `[resource_limits]` sets when an alert is raised and where it goes. A usage percentage of `0` disables that alert; `site_uptime` covers sites that stop answering their ping. A condition must hold for five minutes before anything is sent.
 
-Alerts always go to Central. Each entry in `webhook_endpoints` receives them too, as a POST with an `Authorization: Bearer` header. Mail is a third sink, off until `smtp_server`, `smtp_email`, and `email_recipients` are all set.
+Alerts always go to Central. Each entry in `webhook_endpoints` receives them too, as a POST with an `Authorization: Bearer` header. Mail is a third sink, off until a mail server is configured and `email_recipients` is set.
 
-The mail fields follow the framework's Email Account, one setting per field:
+Outgoing mail lives in the bench's `sites/common_site_config.json`, under the keys the framework's Email Account already reads, so a site picks the same mailbox up without any further setup:
 
-- `smtp_server` is the outgoing mail server, `smtp_port` the port it listens on
-- `smtp_use_ssl` connects over SSL; left `false`, the connection is upgraded with STARTTLS instead
-- `smtp_port` may be left at `0`, which means 465 with SSL and 587 with STARTTLS
-- `smtp_email` is the address alerts are sent from, and the login name by default
-- `smtp_login` only when the server expects a login name that is not that address
-- leave `smtp_password` empty for a relay that takes no credentials
+```json
+{
+  "mail_server": "smtp.example.com",
+  "mail_port": 587,
+  "auto_email_id": "alerts@example.com",
+  "mail_login": "alerts@example.com",
+  "mail_password": "secret",
+  "use_tls": 1
+}
+```
+
+- `mail_server` is the outgoing mail server, `mail_port` the port it listens on
+- `use_tls` upgrades the connection with STARTTLS; `0` connects over SSL instead
+- `mail_port` may be left at `0`, which means 465 with SSL and 587 with STARTTLS
+- `auto_email_id` is the address alerts are sent from, and the login name by default
+- `mail_login` only when the server expects a login name that is not that address
+- a relay that takes no credentials gets `disable_mail_smtp_authentication` instead of a password
 
 The certificate is verified in both modes, so a server with a self-signed certificate is refused rather than trusted silently.
 
-Saving these through the Admin UI opens a session against the server first, so a wrong password or an unreachable host is reported then rather than at the first alert.
-
-Unlike the other secrets in this file, `smtp_password` is encrypted at rest with a key generated alongside `common_config.toml` (`.secret_key`, also `0600`); `common_config.toml` itself is written owner-only too. The Admin API never returns it, reporting only whether one is stored.
+Saving these through the Admin UI opens a session against the server first, so a wrong password or an unreachable host is reported then rather than at the first alert. The Admin API never returns the password, reporting only whether one is stored.
 
 `email_recipients` is edited on the notification settings page, the mailbox on its own one, so either may be saved before the other exists.
+
+A bench upgraded from a version that kept the mailbox in `[resource_limits]` is migrated by the `move_mail_to_site_config` patch, which decrypts the old password and writes it into each bench's `sites/common_site_config.json`. Since that file is per bench, a fleet that shared one mailbox gets a copy in every bench.
 
 `BenchConfig` is the only reader/writer of this file - it merges these values into `config.mariadb`, `config.postgres`, `config.letsencrypt`, `config.central`, `config.datum`, and `config.admin.jwks_url`/`jwks_audience` on every read, and writes them back on save. Other code reaches these values through a bench's own `BenchConfig`, never by reading `common_config.toml` directly. `admin.tls` is not part of this file - it stays a per-bench choice in `bench.toml`.
 

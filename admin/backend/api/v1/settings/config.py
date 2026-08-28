@@ -3,12 +3,10 @@ from __future__ import annotations
 import smtplib
 
 from pilot.config import BenchConfig, FirewallRule, S3Config, WafCondition, WafRule, WorkerGroup
-from pilot.config.alert_limit import RESOURCE_LIMIT_FIELDS, ResourceLimitConfig
+from pilot.config.alert_limit import RESOURCE_LIMIT_FIELDS
 from pilot.config.llm import LLMConfig
+from pilot.config.mail import MailConfig
 from pilot.core.alerts import check_mail_credentials
-
-# Saving any of these is what earns a live connection check.
-MAIL_FIELDS = {"smtp_server", "smtp_port", "smtp_email", "smtp_login", "smtp_password", "smtp_use_ssl"}
 
 
 def _coerce_int(value):
@@ -20,9 +18,10 @@ def _coerce_int(value):
 
 
 class ConfigPatcher:
-    def __init__(self, config: BenchConfig, data: dict) -> None:
+    def __init__(self, config: BenchConfig, data: dict, mail: MailConfig | None = None) -> None:
         self.config = config
         self.data = data
+        self.mail = mail or MailConfig()
 
     def apply(self) -> str | None:
         self._apply_bench()
@@ -35,6 +34,8 @@ class ConfigPatcher:
         if error := self._apply_s3():
             return error
         if error := self._apply_resource_limits():
+            return error
+        if error := self._apply_mail():
             return error
         try:
             self.config.validate()
@@ -88,51 +89,56 @@ class ConfigPatcher:
             limits.webhook_endpoints = self._webhook_endpoints(
                 resource_limits["webhook_endpoints"] or [], limits.webhook_endpoints
             )
-        self._apply_alert_mail(limits, resource_limits)
-        try:
-            limits.validate()
-        except ValueError as error:
-            return str(error)
-        return self._check_alert_mail(limits, resource_limits)
-
-    @staticmethod
-    def _check_alert_mail(limits: ResourceLimitConfig, resource_limits: dict) -> str | None:
-        """Prove the settings can actually reach the server before they are stored,
-        the way the framework's Email Account opens a session on save. Only when
-        this request touched them: an unrelated save must not dial the relay."""
-        if not MAIL_FIELDS.intersection(resource_limits):
-            return None
-        if not limits.smtp_server:
-            return None
-        try:
-            check_mail_credentials(limits)
-        except smtplib.SMTPAuthenticationError:
-            return "The mail server rejected that login name and password."
-        except (OSError, smtplib.SMTPException) as error:
-            return f"Could not reach the mail server: {error}"
-        return None
-
-    @staticmethod
-    def _apply_alert_mail(limits: ResourceLimitConfig, resource_limits: dict) -> None:
-        """A blank password keeps the stored one, the same way webhook tokens work.
-        Clearing the server drops it, so a rotated credential has a way out."""
-        for name in ("smtp_server", "smtp_email", "smtp_login"):
-            if name in resource_limits:
-                setattr(limits, name, str(resource_limits[name]).strip())
-        if "smtp_port" in resource_limits:
-            limits.smtp_port = _coerce_int(resource_limits["smtp_port"] or 0)
-        if "smtp_use_ssl" in resource_limits:
-            limits.smtp_use_ssl = bool(resource_limits["smtp_use_ssl"])
-        if resource_limits.get("smtp_password"):
-            limits.smtp_password = str(resource_limits["smtp_password"])
-        if not limits.smtp_server:
-            limits.smtp_password = ""
         if "email_recipients" in resource_limits:
             limits.email_recipients = [
                 address.strip()
                 for address in map(str, resource_limits["email_recipients"] or [])
                 if address.strip()
             ]
+        try:
+            limits.validate()
+        except ValueError as error:
+            return str(error)
+        return None
+
+    def _apply_mail(self) -> str | None:
+        """A blank password keeps the stored one, the same way webhook tokens work.
+        Clearing the server drops it, so a rotated credential has a way out."""
+        mail_data = self.data.get("mail")
+        if not mail_data:
+            return None
+        self._patch_mail_fields(mail_data)
+        try:
+            self.mail.validate()
+        except ValueError as error:
+            return str(error)
+        return self._check_mail()
+
+    def _patch_mail_fields(self, mail_data: dict) -> None:
+        for name in ("server", "email", "login"):
+            if name in mail_data:
+                setattr(self.mail, name, str(mail_data[name]).strip())
+        if "port" in mail_data:
+            self.mail.port = _coerce_int(mail_data["port"] or 0)
+        if "use_ssl" in mail_data:
+            self.mail.use_ssl = bool(mail_data["use_ssl"])
+        if mail_data.get("password"):
+            self.mail.password = str(mail_data["password"])
+        if not self.mail.server:
+            self.mail.password = ""
+
+    def _check_mail(self) -> str | None:
+        """Prove the settings can actually reach the server before they are stored,
+        the way the framework's Email Account opens a session on save."""
+        if not self.mail.server:
+            return None
+        try:
+            check_mail_credentials(self.mail)
+        except smtplib.SMTPAuthenticationError:
+            return "The mail server rejected that login name and password."
+        except (OSError, smtplib.SMTPException) as error:
+            return f"Could not reach the mail server: {error}"
+        return None
 
     @staticmethod
     def _webhook_endpoints(entries: list[dict], stored: dict[str, str]) -> dict[str, str]:

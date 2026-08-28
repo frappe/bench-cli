@@ -1,5 +1,6 @@
 """Tests for the email sink on the alert fan-out."""
 
+import json
 import smtplib
 import ssl
 from pathlib import Path
@@ -10,6 +11,7 @@ import pytest
 
 from pilot.config import BenchConfig, MariaDBConfig, RedisConfig, WorkerConfig
 from pilot.config.alert_limit import ResourceLimitConfig
+from pilot.config.mail import MailConfig
 from pilot.core.alerts import check_mail_credentials, notify, send_mail
 from pilot.core.bench import Bench
 
@@ -59,19 +61,17 @@ def _clear_sends():
     FakeSMTP.sends.clear()
 
 
-def _limits(**overrides) -> ResourceLimitConfig:
-    limits = ResourceLimitConfig(
-        smtp_server="smtp.test",
-        smtp_email="alerts@test",
-        smtp_password="secret",
-        email_recipients=["ops@test"],
-    )
+def _mail(**overrides) -> MailConfig:
+    mail = MailConfig(server="smtp.test", email="alerts@test", password="secret")
     for name, value in overrides.items():
-        setattr(limits, name, value)
-    return limits
+        setattr(mail, name, value)
+    return mail
 
 
-def _bench(tmp_path: Path, limits: ResourceLimitConfig) -> Bench:
+RECIPIENTS = ["ops@test"]
+
+
+def _bench(tmp_path: Path, mail: MailConfig, **limit_overrides) -> Bench:
     config = BenchConfig(
         name="my-bench",
         python_version="3.14",
@@ -79,13 +79,20 @@ def _bench(tmp_path: Path, limits: ResourceLimitConfig) -> Bench:
         redis=RedisConfig(),
         workers=WorkerConfig(),
     )
-    config.resource_limits = limits
-    return Bench(config, tmp_path / "my-bench")
+    config.resource_limits = ResourceLimitConfig(
+        email_recipients=limit_overrides.pop("email_recipients", list(RECIPIENTS)),
+        **limit_overrides,
+    )
+    bench = Bench(config, tmp_path / "my-bench")
+    bench.sites_path.mkdir(parents=True, exist_ok=True)
+    (bench.sites_path / "common_site_config.json").write_text("{}")
+    mail.write(bench.sites_path)
+    return bench
 
 
 def test_the_alert_is_mailed_over_starttls() -> None:
     with patch("smtplib.SMTP", FakeSMTP):
-        send_mail(_limits(email_recipients=["ops@test", "oncall@test"]), PAYLOAD)
+        send_mail(_mail(), ["ops@test", "oncall@test"], PAYLOAD)
 
     sent = FakeSMTP.sends[0]
     message = sent.messages[0]
@@ -101,9 +108,9 @@ def test_both_transports_verify_the_server_certificate() -> None:
     """smtplib's own default context skips verification, which would hand the
     password to whoever answers on an intercepted connection."""
     with patch("smtplib.SMTP", FakeSMTP):
-        send_mail(_limits(), PAYLOAD)
+        send_mail(_mail(), RECIPIENTS, PAYLOAD)
     with patch("smtplib.SMTP_SSL", FakeSMTP):
-        send_mail(_limits(smtp_use_ssl=True), PAYLOAD)
+        send_mail(_mail(use_ssl=True), RECIPIENTS, PAYLOAD)
 
     for send in FakeSMTP.sends:
         assert send.context is not None
@@ -113,7 +120,7 @@ def test_both_transports_verify_the_server_certificate() -> None:
 
 def test_the_address_is_the_sender_and_the_default_login_name() -> None:
     with patch("smtplib.SMTP", FakeSMTP):
-        send_mail(_limits(), PAYLOAD)
+        send_mail(_mail(), RECIPIENTS, PAYLOAD)
 
     sent = FakeSMTP.sends[0]
     assert sent.messages[0]["From"] == "alerts@test"
@@ -124,7 +131,7 @@ def test_a_separate_login_name_does_not_change_the_sender() -> None:
     """The framework's Email Account allows a login that is not the address; the
     mail still has to come from the address the operator configured."""
     with patch("smtplib.SMTP", FakeSMTP):
-        send_mail(_limits(smtp_login="alerts"), PAYLOAD)
+        send_mail(_mail(login="alerts"), RECIPIENTS, PAYLOAD)
 
     sent = FakeSMTP.sends[0]
     assert sent.logged_in_as == ("alerts", "secret")
@@ -133,7 +140,7 @@ def test_a_separate_login_name_does_not_change_the_sender() -> None:
 
 def test_ssl_connects_on_465() -> None:
     with patch("smtplib.SMTP_SSL", FakeSMTP):
-        send_mail(_limits(smtp_use_ssl=True), PAYLOAD)
+        send_mail(_mail(use_ssl=True), RECIPIENTS, PAYLOAD)
 
     sent = FakeSMTP.sends[0]
     assert (sent.host, sent.port) == ("smtp.test", 465)
@@ -142,14 +149,14 @@ def test_ssl_connects_on_465() -> None:
 
 def test_a_configured_port_wins_over_the_default() -> None:
     with patch("smtplib.SMTP", FakeSMTP):
-        send_mail(_limits(smtp_port=2525), PAYLOAD)
+        send_mail(_mail(port=2525), RECIPIENTS, PAYLOAD)
 
     assert FakeSMTP.sends[0].port == 2525
 
 
 def test_a_relay_without_a_password_sends_anonymously() -> None:
     with patch("smtplib.SMTP", FakeSMTP):
-        send_mail(_limits(smtp_password=""), PAYLOAD)
+        send_mail(_mail(password=""), RECIPIENTS, PAYLOAD)
 
     sent = FakeSMTP.sends[0]
     assert sent.logged_in_as is None
@@ -163,30 +170,31 @@ def test_a_refused_recipient_is_not_a_delivery(tmp_path: Path) -> None:
     refused = {"oncall@test": (550, b"No such user")}
 
     with patch("smtplib.SMTP", FakeSMTP), patch.object(FakeSMTP, "refuse", refused):
-        delivered = notify(_bench(tmp_path, _limits()), PAYLOAD)
+        delivered = notify(_bench(tmp_path, _mail()), PAYLOAD)
 
     assert not delivered
 
 
 def test_broken_settings_disable_mail_instead_of_raising(tmp_path: Path) -> None:
-    """common_config.toml can be hand-edited, and most config reads skip validation,
-    so bad settings have to read as "no mail sink" rather than kill the monitor tick."""
-    for overrides in ({"smtp_email": "not-an-address"}, {"smtp_port": 70000}, {"smtp_server": ""}):
-        limits = _limits(**overrides)
-        assert not limits.is_mail_configured
+    """common_site_config.json can be hand-edited, and most config reads skip
+    validation, so bad settings have to read as "no mail sink" rather than kill
+    the monitor tick."""
+    for overrides in ({"email": "not-an-address"}, {"port": 70000}, {"server": ""}):
+        mail = _mail(**overrides)
+        assert not mail.is_configured
         with patch("smtplib.SMTP", FakeSMTP):
-            assert notify(_bench(tmp_path, limits), PAYLOAD) is False
+            assert notify(_bench(tmp_path, mail), PAYLOAD) is False
     assert FakeSMTP.sends == []
 
 
 def test_mail_counts_as_delivery_when_every_webhook_fails(tmp_path: Path) -> None:
-    limits = _limits(webhook_endpoints={"https://one.test": "token"})
+    bench = _bench(tmp_path, _mail(), webhook_endpoints={"https://one.test": "token"})
 
     with (
         patch("smtplib.SMTP", FakeSMTP),
         patch("pilot.core.alerts.send_alert", side_effect=OSError("unreachable")),
     ):
-        delivered = notify(_bench(tmp_path, limits), PAYLOAD)
+        delivered = notify(bench, PAYLOAD)
 
     assert delivered
     assert len(FakeSMTP.sends) == 1
@@ -194,12 +202,12 @@ def test_mail_counts_as_delivery_when_every_webhook_fails(tmp_path: Path) -> Non
 
 def test_an_unreachable_mail_server_is_not_a_delivery(tmp_path: Path) -> None:
     with patch("smtplib.SMTP", side_effect=OSError("unreachable")):
-        assert not notify(_bench(tmp_path, _limits()), PAYLOAD)
+        assert not notify(_bench(tmp_path, _mail()), PAYLOAD)
 
 
 def test_no_mail_goes_out_without_recipients(tmp_path: Path) -> None:
     with patch("smtplib.SMTP", FakeSMTP):
-        notify(_bench(tmp_path, _limits(email_recipients=[])), PAYLOAD)
+        notify(_bench(tmp_path, _mail(), email_recipients=[]), PAYLOAD)
 
     assert FakeSMTP.sends == []
 
@@ -207,27 +215,28 @@ def test_no_mail_goes_out_without_recipients(tmp_path: Path) -> None:
 def test_recipients_may_be_saved_before_a_mailbox_exists() -> None:
     """Recipients are configured on the notifications page, the mailbox on its
     own one, so neither order of setting them up may fail validation."""
-    _limits(smtp_server="", smtp_email="", smtp_password="").validate()
+    ResourceLimitConfig(email_recipients=list(RECIPIENTS)).validate()
+    _mail(server="", email="", password="").validate()
 
 
 def test_a_bad_recipient_is_rejected() -> None:
     with pytest.raises(ValueError, match="bad address"):
-        _limits(email_recipients=["ops.test"]).validate()
+        ResourceLimitConfig(email_recipients=["ops.test"]).validate()
 
 
 def test_malformed_server_settings_are_rejected() -> None:
-    with pytest.raises(ValueError, match="smtp_email must be an email address"):
-        _limits(smtp_email="alerts").validate()
+    with pytest.raises(ValueError, match="auto_email_id must be an email address"):
+        _mail(email="alerts").validate()
 
-    with pytest.raises(ValueError, match="smtp_port must be a port number"):
-        _limits(smtp_port=70000).validate()
+    with pytest.raises(ValueError, match="mail_port must be a port number"):
+        _mail(port=70000).validate()
 
 
 def test_the_credential_check_opens_and_drops_a_session() -> None:
     """Settings are proved against the server while they are being saved, the
     way the framework's Email Account opens a session on save."""
     with patch("smtplib.SMTP", FakeSMTP):
-        check_mail_credentials(_limits())
+        check_mail_credentials(_mail())
 
     sent = FakeSMTP.sends[0]
     assert sent.logged_in_as == ("alerts@test", "secret")
@@ -241,4 +250,46 @@ def test_the_credential_check_raises_on_a_bad_password() -> None:
         patch.object(FakeSMTP, "login", side_effect=error),
         pytest.raises(smtplib.SMTPAuthenticationError),
     ):
-        check_mail_credentials(_limits())
+        check_mail_credentials(_mail())
+
+
+def test_an_unparsable_mailbox_survives_an_unrelated_save(tmp_path: Path) -> None:
+    """A settings save that never touched mail must not delete a mailbox it
+    could not validate, and the framework allows auto_email_id to be absent."""
+    stored = {
+        "db_host": "127.0.0.1",
+        "mail_server": "smtp.example.com",
+        "mail_login": "alerts@test",
+        "mail_password": "secret",
+        "use_tls": 1,
+    }
+    (tmp_path / "common_site_config.json").write_text(json.dumps(stored))
+
+    MailConfig.read(tmp_path).write(tmp_path)
+
+    written = json.loads((tmp_path / "common_site_config.json").read_text())
+    assert written["mail_password"] == "secret"
+    assert written["db_host"] == "127.0.0.1"
+    # The absent address is filled in from the login name rather than dropped.
+    assert written["auto_email_id"] == "alerts@test"
+
+
+def test_the_login_name_is_the_sender_when_no_address_is_stored(tmp_path: Path) -> None:
+    """The framework reads auto_email_id, then falls back to mail_login."""
+    (tmp_path / "common_site_config.json").write_text(
+        json.dumps({"mail_server": "smtp.test", "mail_login": "alerts@test", "mail_password": "secret"})
+    )
+
+    assert MailConfig.read(tmp_path).email == "alerts@test"
+
+
+def test_clearing_the_server_drops_the_stored_mailbox(tmp_path: Path) -> None:
+    (tmp_path / "common_site_config.json").write_text(
+        json.dumps({"db_host": "127.0.0.1", "mail_server": "smtp.test", "auto_email_id": "alerts@test"})
+    )
+
+    mail = MailConfig.read(tmp_path)
+    mail.server = ""
+    mail.write(tmp_path)
+
+    assert json.loads((tmp_path / "common_site_config.json").read_text()) == {"db_host": "127.0.0.1"}

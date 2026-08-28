@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import threading
 from pathlib import Path
 
-from pilot.config.alert_limit import ResourceLimitConfig
 from pilot.config.central import CentralConfig
 from pilot.config.common import CommonConfig
 from pilot.config.datum import DatumConfig
@@ -68,60 +66,6 @@ def test_central_omitted_from_output_when_unset(tmp_path: Path) -> None:
 def test_datum_omitted_from_output_when_unset(tmp_path: Path) -> None:
     CommonConfig().write(tmp_path)
     assert "[datum]" not in CommonConfig.path(tmp_path).read_text()
-
-
-def test_smtp_password_is_not_stored_as_plaintext(tmp_path: Path) -> None:
-    config = CommonConfig(
-        resource_limits=ResourceLimitConfig(
-            smtp_server="smtp.test",
-            smtp_email="alerts@smtp.test",
-            smtp_password="s3cret",
-            email_recipients=["ops@example.com"],
-        )
-    )
-    config.write(tmp_path)
-
-    assert "s3cret" not in CommonConfig.path(tmp_path).read_text()
-    assert CommonConfig.read(tmp_path).resource_limits.smtp_password == "s3cret"
-
-
-def test_key_creation_is_covered_by_the_write_lock(tmp_path: Path, monkeypatch) -> None:
-    """Two processes racing to save the first SMTP password must not each mint
-    their own encryption key: whichever write lands second would then be
-    undecryptable under the key the other one left behind. Assert directly
-    that write()'s file lock is already held by the time key creation runs,
-    rather than relying on timing to expose the race."""
-    import fcntl
-
-    from pilot.config import secret_box
-    from pilot.internal import atomic_file
-
-    lock_path = atomic_file._lock_path(CommonConfig.path(tmp_path))
-    real_load_or_create_key = secret_box._load_or_create_key
-    lock_was_held = False
-
-    def _checking_load_or_create_key(benches_root: Path) -> bytes:
-        nonlocal lock_was_held
-        with open(lock_path) as check:
-            try:
-                fcntl.flock(check.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                fcntl.flock(check.fileno(), fcntl.LOCK_UN)
-            except OSError:
-                lock_was_held = True
-        return real_load_or_create_key(benches_root)
-
-    monkeypatch.setattr(secret_box, "_load_or_create_key", _checking_load_or_create_key)
-
-    CommonConfig(
-        resource_limits=ResourceLimitConfig(
-            smtp_server="smtp.test",
-            smtp_email="alerts@smtp.test",
-            smtp_password="s3cret",
-            email_recipients=["ops@example.com"],
-        )
-    ).write(tmp_path)
-
-    assert lock_was_held
 
 
 def test_datum_is_shared_by_every_bench(tmp_path: Path) -> None:

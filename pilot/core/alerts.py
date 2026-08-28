@@ -10,10 +10,10 @@ import urllib.request
 from email.message import EmailMessage
 from pathlib import Path
 
+from pilot.config.mail import MailConfig
 from pilot.integrations.central import CentralClient, CentralClientError
 
 if typing.TYPE_CHECKING:
-    from pilot.config.alert_limit import ResourceLimitConfig
     from pilot.core.bench import Bench
 
 # How long a condition must hold before it is worth telling anyone about.
@@ -39,9 +39,9 @@ def send_alert(endpoint: str, token: str, payload: dict[str, typing.Any]) -> Non
 
 
 @contextlib.contextmanager
-def smtp_session(limits: "ResourceLimitConfig") -> typing.Iterator[smtplib.SMTP]:
+def smtp_session(mail: MailConfig) -> typing.Iterator[smtplib.SMTP]:
     """A connected, encrypted, logged-in SMTP session for these settings."""
-    endpoint = limits.get_mail_endpoint()
+    endpoint = mail.get_endpoint()
     # smtplib's own default context does not verify the peer, so pass one that does:
     # an unverified hop would hand the password to whoever answers.
     context = ssl.create_default_context()
@@ -56,18 +56,18 @@ def smtp_session(limits: "ResourceLimitConfig") -> typing.Iterator[smtplib.SMTP]
         if not endpoint.is_ssl:
             server.starttls(context=context)
         if endpoint.username:
-            server.login(endpoint.username, limits.smtp_password)
+            server.login(endpoint.username, mail.password)
         yield server
 
 
-def check_mail_credentials(limits: "ResourceLimitConfig") -> None:
+def check_mail_credentials(mail: MailConfig) -> None:
     """Open a session and drop it, so bad settings are reported while they are
     being saved rather than at the first alert. Raises like `send_mail` does."""
-    with smtp_session(limits):
+    with smtp_session(mail):
         pass
 
 
-def send_mail(limits: "ResourceLimitConfig", payload: dict[str, typing.Any]) -> None:
+def send_mail(mail: MailConfig, recipients: list[str], payload: dict[str, typing.Any]) -> None:
     """Email one alert to every configured recipient.
 
     Raises if any recipient is refused: a partial send still leaves someone
@@ -75,11 +75,11 @@ def send_mail(limits: "ResourceLimitConfig", payload: dict[str, typing.Any]) -> 
     """
     message = EmailMessage()
     message["Subject"] = f"[Pilot] {payload['message']}"
-    message["From"] = limits.get_mail_endpoint().sender
-    message["To"] = ", ".join(limits.email_recipients)
+    message["From"] = mail.get_endpoint().sender
+    message["To"] = ", ".join(recipients)
     message.set_content(f"{payload['message']}\n\n{json.dumps(payload['context'], indent=2)}")
 
-    with smtp_session(limits) as server:
+    with smtp_session(mail) as server:
         refused = server.send_message(message)
         if refused:
             raise smtplib.SMTPRecipientsRefused(refused)
@@ -97,9 +97,10 @@ def notify(bench: "Bench", payload: dict[str, typing.Any]) -> bool:
             continue
         delivered = True
 
-    if limits.is_mail_configured:
+    mail = MailConfig.read(bench.sites_path)
+    if mail.is_configured and limits.email_recipients:
         try:
-            send_mail(limits, payload)
+            send_mail(mail, limits.email_recipients, payload)
         except OSError:
             pass
         else:

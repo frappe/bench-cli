@@ -162,7 +162,7 @@ onMounted(async () => {
       original_url: webhook.url || '',
     }))
     recipients.value = [...(saved.email_recipients || [])]
-    mailConfigured.value = Boolean(saved.smtp_server)
+    mailConfigured.value = Boolean((data.mail || {}).server)
     savedPayload.value = JSON.stringify(buildPayload())
   } catch (e) {
     error.value = e.message || 'Could not load settings.'

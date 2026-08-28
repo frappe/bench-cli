@@ -27,12 +27,12 @@ const dirty = computed(() => JSON.stringify(buildPayload()) !== savedPayload.val
 const defaultPort = computed(() => (useSsl.value ? 465 : 587))
 
 const buildPayload = () => ({
-  smtp_server: server.value.trim(),
-  smtp_port: Number(port.value) || 0,
-  smtp_email: email.value.trim(),
-  smtp_login: loginIsDifferent.value ? login.value.trim() : '',
-  smtp_password: password.value,
-  smtp_use_ssl: useSsl.value,
+  server: server.value.trim(),
+  port: Number(port.value) || 0,
+  email: email.value.trim(),
+  login: loginIsDifferent.value ? login.value.trim() : '',
+  password: password.value,
+  use_ssl: useSsl.value,
 })
 
 const portError = computed(() => {
@@ -64,7 +64,7 @@ const save = async () => {
   error.value = ''
   saving.value = true
   try {
-    const result = await settingsApi.update({ resource_limits: buildPayload() })
+    const result = await settingsApi.update({ mail: buildPayload() })
     if (result.error) {
       error.value = apiErrorMessage(result, 'Failed to save.')
       return
@@ -83,14 +83,14 @@ const save = async () => {
 onMounted(async () => {
   try {
     const data = await settingsApi.get()
-    const saved = data.resource_limits || {}
-    server.value = saved.smtp_server || ''
-    port.value = saved.smtp_port ? String(saved.smtp_port) : ''
-    email.value = saved.smtp_email || ''
-    login.value = saved.smtp_login || ''
-    loginIsDifferent.value = Boolean(saved.smtp_login)
-    useSsl.value = Boolean(saved.smtp_use_ssl)
-    passwordSet.value = Boolean(saved.smtp_password_set)
+    const saved = data.mail || {}
+    server.value = saved.server || ''
+    port.value = saved.port ? String(saved.port) : ''
+    email.value = saved.email || ''
+    login.value = saved.login || ''
+    loginIsDifferent.value = Boolean(saved.login)
+    useSsl.value = Boolean(saved.use_ssl)
+    passwordSet.value = Boolean(saved.password_set)
     savedPayload.value = JSON.stringify(buildPayload())
   } catch (e) {
     error.value = e.message || 'Could not load settings.'
