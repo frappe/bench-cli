@@ -26,8 +26,6 @@ const withSite = (columns) => (props.showSite ? ['Site', ...columns] : columns)
 
 const siteCell = (row) => (props.showSite ? [siteLabel(row.database)] : [])
 
-// Redundant indexes come from information_schema, so that tab keeps working
-// while Performance Schema is off.
 const tabOptions = [
   { label: 'Unused', value: 'unused' },
   { label: 'Redundant', value: 'redundant' },

@@ -13,8 +13,6 @@ from pilot.core.database.base import (
 
 SYSTEM_SCHEMAS = ("information_schema", "performance_schema", "mysql", "sys")
 
-# Frappe puts these on every doctype table, so they are reported as unused on
-# any site that never filters by them. That is expected, not actionable.
 FRAMEWORK_INDEXES = ("parent", "creation")
 
 TIME_CONSUMING_QUERIES = """
@@ -30,8 +28,6 @@ TIME_CONSUMING_QUERIES = """
     LIMIT 10
 """
 
-# A statement that read rows without a usable index. Ranked by how often it had
-# to, so a query that always scans outranks one that occasionally does.
 FULL_TABLE_SCAN_QUERIES = """
     SELECT SCHEMA_NAME AS db,
            DIGEST_TEXT AS query,
@@ -60,8 +56,6 @@ UNUSED_INDEXES = """
     ORDER BY OBJECT_NAME, INDEX_NAME
 """
 
-# Two passes over the same index listing: one supplying candidates, one
-# supplying the index that already covers them.
 REDUNDANT_INDEXES = """
     WITH indexed_columns AS (
         SELECT TABLE_SCHEMA AS table_schema,

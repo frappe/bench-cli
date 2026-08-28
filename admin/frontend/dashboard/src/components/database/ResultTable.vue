@@ -2,8 +2,6 @@
 import { Button, Dialog } from 'frappe-ui'
 import { computed, ref, watch } from 'vue'
 
-// Columns are labels and rows are positional arrays, matching how the
-// analyzer's sections are already shaped.
 const props = defineProps({
   columns: { type: Array, required: true },
   rows: { type: Array, required: true },
@@ -23,9 +21,9 @@ const PAGE_SIZE = 10
 const page = ref(1)
 
 watch(
-  () => props.rows,
+  () => props.rows.length,
   () => {
-    page.value = 1
+    page.value = Math.min(page.value, pageCount.value)
   },
 )
 
@@ -109,7 +107,7 @@ const openFullView = (row, columnIndex) => {
           <tr v-for="(row, rowIndex) in pageRows" :key="rowIndex">
             <td
               v-if="!hideIndexColumn"
-              class="px-3 py-2 border-b border-r truncate"
+              class="px-3 py-2 border-r truncate"
               :class="{ 'border-b': !(isLastRow(rowIndex) && borderLess) }"
             >
               {{ pageStart + rowIndex }}

@@ -12,7 +12,6 @@ const props = defineProps({
   report: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
-  // Server-wide, findings span every site, so each row names the site it came from.
   showSite: { type: Boolean, default: false },
   siteByDatabase: { type: Object, default: () => ({}) },
 })
@@ -23,7 +22,6 @@ const tab = ref('time')
 
 const enabled = computed(() => Boolean(props.report?.performance_schema_enabled))
 
-// A database whose site is gone from the bench keeps its own name.
 const siteLabel = (database) => props.siteByDatabase[database] || database || '—'
 
 const withSite = (columns) => (props.showSite ? ['Site', ...columns] : columns)

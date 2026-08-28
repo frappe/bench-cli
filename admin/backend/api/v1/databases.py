@@ -101,8 +101,6 @@ def list_query_sites() -> ResponseReturnValue:
             {
                 "name": d.name,
                 "db_type": config.get("db_type", "mariadb"),
-                # Lets the analyzer label server-wide findings with the site
-                # that owns the database instead of its hashed name.
                 "db_name": config.get("db_name", ""),
             }
         )

@@ -171,8 +171,6 @@ const siteOptions = computed(() => [
     .map((site) => ({ label: site.name, value: site.name })),
 ])
 
-// Server-wide findings carry a hashed database name; the site that owns it is
-// what an operator actually recognises. Databases with no site keep their name.
 const siteByDatabase = computed(() =>
   Object.fromEntries(
     sites.value.filter((site) => site.db_name).map((site) => [site.db_name, site.name]),
@@ -427,7 +425,6 @@ onMounted(load)
   <ErrorMessage v-else-if="error" :message="error" />
 
   <div v-else-if="diagnostics" class="flex flex-col mt-2">
-    <!-- Database Size Breakup -->
     <div>
       <div class="flex flex-row justify-between items-center">
         <p class="font-medium text-ink-gray-8 text-base">Database Size Breakup</p>
@@ -451,7 +448,6 @@ onMounted(load)
       </div>
     </div>
 
-    <!-- Database Processes -->
     <ToggleContent
       class="mt-3"
       label="Database Processes"
@@ -490,7 +486,6 @@ onMounted(load)
       </ResultTable>
     </ToggleContent>
 
-    <!-- Database Locks -->
     <ToggleContent
       class="mt-3"
       label="Database Locks"
@@ -547,7 +542,6 @@ onMounted(load)
       @refresh="loadPerformance"
     />
 
-    <!-- Database Binary Logs -->
     <ToggleContent
       v-if="hasBinlogs"
       class="mt-3"
@@ -655,13 +649,3 @@ onMounted(load)
     </div>
   </Dialog>
 </template>
-
-<style scoped>
-/* A `1fr` grid track takes its minimum from the item's min-content width, so a
-   long header label or query would widen the table past the panel and add a
-   horizontal scrollbar. Letting the cells shrink keeps every column in view. */
-:deep(.grid) > * {
-  min-width: 0;
-  overflow: hidden;
-}
-</style>

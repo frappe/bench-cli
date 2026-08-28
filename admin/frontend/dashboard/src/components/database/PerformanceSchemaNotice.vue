@@ -6,8 +6,6 @@ import EmptyState from '@/components/common/EmptyState.vue'
 
 const router = useRouter()
 
-// The Database tab renders the Quick Actions toggle inline, and its own
-// confirmation dialog carries the restart warning.
 const openDatabaseSettings = () =>
   router.push({ name: 'Settings', params: { section: 'database' } })
 </script>

@@ -28,8 +28,6 @@ const isVisible = ref(false)
       <slot v-if="isVisible" name="actions" />
     </div>
 
-    <!-- A 0fr/1fr grid row animates to the content's own height, which a
-         height transition cannot do without measuring it first. -->
     <div
       class="grid duration-200 transition-[grid-template-rows] ease-[var(--ease-out)]"
       :class="isVisible ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
