@@ -44,14 +44,13 @@ class CommonConfig:
         path = cls.path(benches_root)
         if not path.exists():
             return cls()
-        return cls.from_raw_dict(Toml.loads(path.read_text(encoding="utf-8")), benches_root)
+        return cls.from_raw_dict(Toml.loads(path.read_text(encoding="utf-8")))
 
     @classmethod
-    def from_raw_dict(cls, data: dict, benches_root: Path | None = None) -> "CommonConfig":
+    def from_raw_dict(cls, data: dict) -> "CommonConfig":
         """Build from a parsed TOML dict shaped like common_config.toml (or a
         bench.toml that still carries these tables pre-migration)."""
         admin = data.get("admin", {})
-        resource_limits = _known_fields(ResourceLimitConfig, data.get("resource_limits", {}))
         return cls(
             mariadb=MariaDBConfig(**_known_fields(MariaDBConfig, data.get("mariadb", {}))),
             postgres=PostgresConfig(**_known_fields(PostgresConfig, data.get("postgres", {}))),
@@ -59,7 +58,9 @@ class CommonConfig:
             central=CentralConfig.from_dict(data.get("central", {})),
             datum=DatumConfig.from_dict(data.get("datum", {})),
             logs=LogsConfig.from_dict(data.get("logs", {})),
-            resource_limits=ResourceLimitConfig(**resource_limits),
+            resource_limits=ResourceLimitConfig(
+                **_known_fields(ResourceLimitConfig, data.get("resource_limits", {}))
+            ),
             jwks_url=admin.get("jwks_url", ""),
             jwks_audience=admin.get("jwks_audience", ""),
         )

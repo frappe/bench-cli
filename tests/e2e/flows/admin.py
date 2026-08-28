@@ -6,11 +6,18 @@ from harness.tasks import run_task_action, wait_for_task
 from playwright.sync_api import Page, expect
 
 
+def open_root(page: Page, base_url: str) -> None:
+    """`/` redirects to `/sites` in the router, so waiting for load races that redirect and
+    Playwright reports the navigation as interrupted. Return once the document commits instead;
+    the callers' own locators wait for whichever page the redirect chain settles on."""
+    page.goto(f"{base_url}/", wait_until="commit")
+
+
 def login(page: Page, base_url: str, password: str) -> None:
     # The wizard's own sign-in carries over in this shared browser context, so without
     # clearing it the login form would never render. Drop it to exercise real login.
     page.context.clear_cookies()
-    page.goto(f"{base_url}/")
+    open_root(page, base_url)
     page.get_by_placeholder("Password").fill(password)
     page.get_by_role("button", name="Continue").click()
     # Landed on the Sites page once the header action is mounted.
@@ -18,7 +25,7 @@ def login(page: Page, base_url: str, password: str) -> None:
 
 
 def create_site(page: Page, base_url: str, site_name: str) -> None:
-    page.goto(f"{base_url}/")
+    open_root(page, base_url)
     page.get_by_role("button", name="New site").click()
 
     dialog = page.get_by_role("dialog")

@@ -5,6 +5,7 @@ import { Button, Checkbox, Dialog, ErrorMessage, FormControl, Select } from 'fra
 import { apiErrorMessage } from '@/api/client'
 import { sitesApi } from '@/api/sites'
 import { formatHour } from '@/utils/backup'
+import { cronToPicks, picksToCron } from '@/utils/cron'
 
 const props = defineProps({ siteName: { type: String, required: true } })
 const emit = defineEmits(['saved'])
@@ -40,6 +41,7 @@ const frequency = ref('daily')
 const weekday = ref(0)
 const monthDay = ref(1)
 const hour = ref(2)
+const minute = ref(0)
 const scheme = ref('gfs')
 const keepLast = ref(7)
 const keepDaily = ref(7)
@@ -53,23 +55,33 @@ const schemeHint = computed(() =>
     : 'Keeps recent daily, weekly, monthly and yearly backups; the rest are pruned.',
 )
 
-const cron = computed(() => {
-  if (frequency.value === 'weekly') return `0 ${hour.value} * * ${weekday.value}`
-  if (frequency.value === 'monthly') return `0 ${hour.value} ${monthDay.value} * *`
-  return `0 ${hour.value} * * *`
+// The pickers hold local time; the server stores the schedule in UTC.
+const cron = computed(() =>
+  picksToCron({
+    frequency: frequency.value,
+    weekday: weekday.value,
+    monthDay: monthDay.value,
+    hour: hour.value,
+    minute: minute.value,
+  }),
+)
+
+const hourPick = computed({
+  get: () => hour.value,
+  set: (value) => {
+    hour.value = value
+    minute.value = 0
+  },
 })
 
 const applySchedule = (schedule) => {
   if (!schedule) return
-  const [, h, dom, , dow] = schedule.split(' ')
-  hour.value = parseInt(h) || 0
-  if (dom !== '*') {
-    frequency.value = 'monthly'
-    monthDay.value = parseInt(dom) || 1
-  } else if (dow !== '*') {
-    frequency.value = 'weekly'
-    weekday.value = parseInt(dow) || 0
-  } else frequency.value = 'daily'
+  const picks = cronToPicks(schedule)
+  frequency.value = picks.frequency
+  weekday.value = picks.weekday
+  monthDay.value = picks.monthDay
+  hour.value = picks.hour
+  minute.value = picks.minute
 }
 
 const applyRetention = (retention) => {
@@ -162,7 +174,7 @@ defineExpose({ open })
             v-model.number="monthDay"
             :options="monthDayOptions"
           />
-          <Select label="Time" v-model.number="hour" :options="hourOptions" />
+          <Select label="Time" v-model.number="hourPick" :options="hourOptions" />
         </div>
 
         <div class="space-y-4 pt-5 border-t border-outline-gray-1">

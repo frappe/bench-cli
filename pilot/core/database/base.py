@@ -161,6 +161,14 @@ class Database(ABC):
         """Sizes of the engine's own files, excluding the databases."""
         raise NotImplementedError
 
+    def get_schema_sizes(self) -> dict[str, int]:
+        """Bytes every database on this server holds on disk, keyed by database
+        name. One round trip for the whole server, system schemas included.
+
+        Allocated-but-unused space counts: it is space the disk cannot hand to
+        anything else until the database is rebuilt."""
+        raise NotImplementedError
+
     def get_data_directory(self) -> str | None:
         """Server data directory, or None when the server is not on this host
         and the path would therefore be meaningless locally."""

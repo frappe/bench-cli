@@ -59,6 +59,22 @@ const clearCache = async () => {
   }
 }
 
+const refreshingStorage = ref(false)
+
+const refreshStorage = async () => {
+  error.value = ''
+  refreshingStorage.value = true
+  try {
+    const data = await sitesApi.refreshStorage(props.siteName)
+    if (data.task_id) openTaskDetailPage(router, data.task_id)
+    else error.value = apiErrorMessage(data, 'Failed to refresh storage usage.')
+  } catch (e) {
+    error.value = e.message || 'Failed to refresh storage usage.'
+  } finally {
+    refreshingStorage.value = false
+  }
+}
+
 // Each action only appears once its `condition` passes.
 const Actions = [
   {
@@ -77,6 +93,15 @@ const Actions = [
     condition: () => true,
     loading: () => clearingCache.value,
     onClick: () => clearCache(),
+  },
+  {
+    key: 'refresh_storage',
+    label: 'Refresh usage',
+    buttonLabel: 'Refresh',
+    description: "Measure this bench's sites again. Usage is collected every six hours.",
+    condition: () => true,
+    loading: () => refreshingStorage.value,
+    onClick: () => refreshStorage(),
   },
 ]
 

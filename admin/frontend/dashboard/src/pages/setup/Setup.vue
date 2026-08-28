@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   Button,
+  Combobox,
   Select,
   TextInput,
   FormLabel,
@@ -36,6 +37,8 @@ const {
   rootUserPlaceholder,
   dbTypeOptions,
   branchOptions,
+  validatingFramework,
+  frameworkIsValid,
   stepSequence,
   stepNumber,
   isConfiguring,
@@ -116,9 +119,29 @@ const {
 
         <!-- Customize -->
         <div v-show="currentStep === 'customize'" class="flex flex-col gap-4">
-          <Select label="Frappe branch" v-model="appBranch" :options="branchOptions" />
+          <Combobox
+            label="Frappe branch"
+            v-model="appBranch"
+            :options="branchOptions"
+            trigger="button"
+            placeholder="Search or type a branch…"
+          >
+            <template #item-typed-branch="{ query }">
+              Use branch “{{ query }}”
+            </template>
+          </Combobox>
           <TextInput label="Frappe repository" v-model="appRepo" />
-          <ErrorMessage v-show="errorMessage" :message="errorMessage" />
+          <ErrorMessage v-if="errorMessage" :message="errorMessage" />
+          <p v-else-if="validatingFramework" class="text-ink-gray-5 text-sm">
+            Checking repository…
+          </p>
+          <p
+            v-else-if="frameworkIsValid"
+            class="flex items-center gap-1 text-ink-green-7 text-sm"
+          >
+            <span class="size-3.5 shrink-0 lucide-check"></span>
+            Found frappe
+          </p>
         </div>
 
         <!-- Installing -->
@@ -245,6 +268,7 @@ const {
           v-show="isConfiguring && currentStep !== 'database' && isLastConfigStep"
           variant="solid"
           :loading="isSubmitting"
+          :disabled="!frameworkIsValid"
           class="flex-1"
           @click="startSetup"
         >

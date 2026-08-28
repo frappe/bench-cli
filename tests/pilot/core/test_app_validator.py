@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,6 +27,10 @@ from pilot.exceptions import AppValidationError
 class _FakeBench:
     apps_path: Path
     env_path: Path
+
+    @property
+    def python(self) -> Path:
+        return Path(sys.executable)
 
     def apps(self) -> list[App]:
         apps = []

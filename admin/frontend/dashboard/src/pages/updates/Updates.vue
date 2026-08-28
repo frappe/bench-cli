@@ -56,7 +56,6 @@ const onFilterChange = (value) => {
 
 const badge = (op) => {
   if (op.pending_action) return { label: pendingActionLabel(op.pending_action), theme: 'amber' }
-  if (op.state === 'completed') return null
   const tone = stateTone(op.state)
   return { label: stateLabel(op.state), theme: tone === 'orange' ? 'amber' : tone }
 }
@@ -67,6 +66,7 @@ const columns = [
   { label: 'Update', key: 'title', align: 'left', width: 2 },
   { label: 'Site', key: 'site', align: 'left', width: 2, getTooltip: (row) => row.siteNames },
   { label: 'Status', key: 'badge', align: 'left', width: 1.5 },
+  { label: 'Duration', key: 'duration', align: 'left', width: 1 },
   { label: 'Last run', key: 'timing', align: 'right', width: 2 },
 ]
 
@@ -79,19 +79,16 @@ const rows = computed(() =>
     site: sitesLabel(op),
     siteNames: siteNames(op),
     badge: badge(op),
-    timing: timing(op),
+    duration: duration(op),
+    timing: relativeTime(op.started_at || op.created_at),
   })),
 )
 
 const getRowRoute = (row) => ({ name: 'UpdateDetail', params: { operationId: row.id } })
 
-const timing = (op) => {
-  const parts = []
-  if (op.finished_at && op.started_at) {
-    parts.push(`took ${fmtDuration((new Date(op.finished_at) - new Date(op.started_at)) / 1000)}`)
-  }
-  parts.push(relativeTime(op.started_at || op.created_at))
-  return parts.filter(Boolean).join(' · ')
+const duration = (op) => {
+  if (!op.finished_at || !op.started_at) return ''
+  return fmtDuration((new Date(op.finished_at) - new Date(op.started_at)) / 1000)
 }
 
 const load = async () => {
