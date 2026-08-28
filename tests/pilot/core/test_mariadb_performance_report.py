@@ -6,7 +6,11 @@ from unittest.mock import MagicMock
 
 from pilot.core.database.engines.mariadb_performance import (
     FRAMEWORK_INDEXES,
+    FULL_TABLE_SCAN_QUERIES,
+    REDUNDANT_INDEXES,
     SYSTEM_SCHEMAS,
+    TIME_CONSUMING_QUERIES,
+    UNUSED_INDEXES,
     MariaDBPerformanceReport,
 )
 
@@ -95,9 +99,22 @@ def test_server_scope_excludes_system_schemas() -> None:
     MariaDBPerformanceReport(_connect(cursor), "").build()
 
     query, parameters = cursor.calls[-1]
-    assert "IS NOT NULL" in query
+    assert "%(system_schemas)s" in query
     assert parameters["system_schemas"] == SYSTEM_SCHEMAS
-    assert "database" not in parameters
+    assert parameters["database"] == ""
+
+
+def test_statements_execute_verbatim_without_building_sql() -> None:
+    cursor = FakeCursor([[{"enabled": 1}], [], [], [], []])
+    MariaDBPerformanceReport(_connect(cursor), "site_db").build()
+
+    statements = {
+        TIME_CONSUMING_QUERIES,
+        FULL_TABLE_SCAN_QUERIES,
+        UNUSED_INDEXES,
+        REDUNDANT_INDEXES,
+    }
+    assert {query for query, _ in cursor.calls} >= statements
 
 
 def test_unused_indexes_exclude_framework_indexes() -> None:

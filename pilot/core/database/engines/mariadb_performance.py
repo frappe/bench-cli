@@ -23,7 +23,8 @@ TIME_CONSUMING_QUERIES = """
            ROUND(AVG_TIMER_WAIT / 1000000000, 1) AS average_time_ms,
            ROUND(SUM_TIMER_WAIT / 1000000000, 1) AS total_time_ms
     FROM performance_schema.events_statements_summary_by_digest
-    WHERE {scope}
+    WHERE (SCHEMA_NAME = %(database)s
+           OR (%(database)s = '' AND SCHEMA_NAME NOT IN %(system_schemas)s))
     ORDER BY SUM_TIMER_WAIT DESC
     LIMIT 10
 """
@@ -35,7 +36,8 @@ FULL_TABLE_SCAN_QUERIES = """
            SUM_ROWS_SENT AS rows_sent,
            SUM_ROWS_EXAMINED AS rows_examined
     FROM performance_schema.events_statements_summary_by_digest
-    WHERE {scope}
+    WHERE (SCHEMA_NAME = %(database)s
+           OR (%(database)s = '' AND SCHEMA_NAME NOT IN %(system_schemas)s))
       AND (SUM_NO_INDEX_USED > 0 OR SUM_NO_GOOD_INDEX_USED > 0)
       AND DIGEST_TEXT NOT LIKE 'SHOW%%'
     ORDER BY ROUND(IFNULL(SUM_NO_INDEX_USED / NULLIF(COUNT_STAR, 0), 0) * 100, 0) DESC,
@@ -48,7 +50,8 @@ UNUSED_INDEXES = """
            OBJECT_NAME AS table_name,
            INDEX_NAME AS index_name
     FROM performance_schema.table_io_waits_summary_by_index_usage
-    WHERE {scope}
+    WHERE (OBJECT_SCHEMA = %(database)s
+           OR (%(database)s = '' AND OBJECT_SCHEMA NOT IN %(system_schemas)s))
       AND INDEX_NAME IS NOT NULL
       AND INDEX_NAME <> 'PRIMARY'
       AND INDEX_NAME NOT IN %(framework_indexes)s
@@ -64,7 +67,9 @@ REDUNDANT_INDEXES = """
                MAX(NON_UNIQUE) AS non_unique,
                GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX SEPARATOR ',') AS index_columns
         FROM information_schema.STATISTICS
-        WHERE INDEX_TYPE = 'BTREE' AND {scope}
+        WHERE INDEX_TYPE = 'BTREE'
+          AND (TABLE_SCHEMA = %(database)s
+               OR (%(database)s = '' AND TABLE_SCHEMA NOT IN %(system_schemas)s))
         GROUP BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME
     )
     SELECT redundant.table_schema AS db,
@@ -131,7 +136,7 @@ class MariaDBPerformanceReport:
         return bool(row and row["enabled"])
 
     def get_time_consuming_queries(self, cursor) -> list[TimeConsumingQuery]:
-        rows = self._fetch(cursor, TIME_CONSUMING_QUERIES, "SCHEMA_NAME")
+        rows = self._fetch(cursor, TIME_CONSUMING_QUERIES)
         return [
             TimeConsumingQuery(
                 database=row["db"],
@@ -145,7 +150,7 @@ class MariaDBPerformanceReport:
         ]
 
     def get_full_table_scan_queries(self, cursor) -> list[FullTableScanQuery]:
-        rows = self._fetch(cursor, FULL_TABLE_SCAN_QUERIES, "SCHEMA_NAME")
+        rows = self._fetch(cursor, FULL_TABLE_SCAN_QUERIES)
         return [
             FullTableScanQuery(
                 database=row["db"],
@@ -158,18 +163,13 @@ class MariaDBPerformanceReport:
         ]
 
     def get_unused_indexes(self, cursor) -> list[UnusedIndex]:
-        rows = self._fetch(
-            cursor,
-            UNUSED_INDEXES,
-            "OBJECT_SCHEMA",
-            framework_indexes=FRAMEWORK_INDEXES,
-        )
+        rows = self._fetch(cursor, UNUSED_INDEXES, framework_indexes=FRAMEWORK_INDEXES)
         return [
             UnusedIndex(database=row["db"], table=row["table_name"], index=row["index_name"]) for row in rows
         ]
 
     def get_redundant_indexes(self, cursor) -> list[RedundantIndex]:
-        rows = self._fetch(cursor, REDUNDANT_INDEXES, "TABLE_SCHEMA")
+        rows = self._fetch(cursor, REDUNDANT_INDEXES)
         return [
             RedundantIndex(
                 database=row["db"],
@@ -182,17 +182,9 @@ class MariaDBPerformanceReport:
             for row in rows
         ]
 
-    def _fetch(self, cursor, query: str, schema_column: str, **parameters) -> list[dict]:
-        scope, scope_parameters = self._scope(schema_column)
-        cursor.execute(query.format(scope=scope), {**scope_parameters, **parameters})
-        return list(cursor.fetchall())
-
-    def _scope(self, schema_column: str) -> tuple[str, dict]:
-        """`schema_column` is one of this module's own literals, never client
-        input; the database name it is compared against is always bound."""
-        if self._database:
-            return f"{schema_column} = %(database)s", {"database": self._database}
-        return (
-            f"{schema_column} IS NOT NULL AND {schema_column} NOT IN %(system_schemas)s",
-            {"system_schemas": SYSTEM_SCHEMAS},
+    def _fetch(self, cursor, query: str, **parameters) -> list[dict]:
+        cursor.execute(
+            query,
+            {"database": self._database, "system_schemas": SYSTEM_SCHEMAS, **parameters},
         )
+        return list(cursor.fetchall())

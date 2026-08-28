@@ -302,18 +302,21 @@ const loadSize = async () => {
 }
 
 const loadPerformance = async () => {
+  const site = selectedSite.value
   performanceLoading.value = true
   performanceError.value = ''
   try {
-    const result = await databaseApi.performanceReport(selectedSite.value)
+    const result = await databaseApi.performanceReport(site)
+    if (site !== selectedSite.value) return
     if (result?.error)
       throw new Error(apiErrorMessage(result, 'Could not read the performance report.'))
     performance.value = result
   } catch (e) {
+    if (site !== selectedSite.value) return
     performance.value = null
     performanceError.value = e.message || 'Could not read the performance report.'
   } finally {
-    performanceLoading.value = false
+    if (site === selectedSite.value) performanceLoading.value = false
   }
 }
 

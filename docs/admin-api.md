@@ -84,6 +84,14 @@ Measuring means a `du` per site directory and one schema-size query, so the rout
 
 `POST /sites/<name>/actions/refresh-storage` queues `refresh-storage-usage` to measure again on demand. One report covers every site on the bench, so the task re-measures all of them and concurrent requests fold into one run.
 
+### Database Performance Report
+
+`GET /database/performance-report` returns the read-only findings behind the analyzer's Query Analysis and Index Analysis panels: `time_consuming_queries`, `full_table_scan_queries`, `unused_indexes`, `redundant_indexes`, and the `performance_schema_enabled` flag.
+
+The first three sections come from MariaDB's Performance Schema, so they are empty and the flag is `false` whenever `performance_schema` is off - the instrumentation is a startup setting, and MariaDB collects nothing until the server restarts with it on. `redundant_indexes` reads `information_schema.STATISTICS` instead and stays populated either way. The UI keys off the flag to explain the empty panels rather than reporting them as an error.
+
+`?site=<name>` narrows every section to that site's schema; without it the report covers every user schema on the server, system schemas excluded. Only MariaDB implements it - other engines raise, and the route answers 422.
+
 ### Setup
 
 Every `/setup/*` route needs a session, like the rest of the API. The Admin password is set when the bench is created (`pilot new`), so there is no unauthenticated window: a browser reaches the wizard through the `?sid=` link that `pilot start` prints, or by signing in with that password. `POST /benches` returns a `setup_link` token for the same purpose.
