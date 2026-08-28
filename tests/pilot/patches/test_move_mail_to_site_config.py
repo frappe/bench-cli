@@ -107,12 +107,30 @@ def test_running_twice_does_not_undo_a_later_edit(tmp_path: Path) -> None:
     assert MailConfig.read(sites).server == "smtp2.example.com"
 
 
-def test_an_undecryptable_password_is_dropped_not_stored(tmp_path: Path) -> None:
-    """Carrying ciphertext over as if it were the password would store a value
-    that can never authenticate."""
+def test_an_undecryptable_password_stops_the_migration(tmp_path: Path) -> None:
+    """The ciphertext is the only copy, so a password that cannot be read must
+    be left alone for a later run rather than migrated away as blank."""
     root = _benches_root(tmp_path, "")
     _encrypted(root, "secret")
     (root / ".secret_key").write_bytes(Fernet.generate_key())
+    original = (
+        "[resource_limits]\n"
+        'smtp_server = "smtp.example.com"\n'
+        'smtp_email = "alerts@example.com"\n'
+        'smtp_password = "gAAAAABmbogus"\n'
+    )
+    (root / "common_config.toml").write_text(original)
+
+    run(root)
+
+    assert (root / "common_config.toml").read_text() == original
+    assert json.loads((root / "main" / "sites" / "common_site_config.json").read_text()) == {
+        "db_host": "127.0.0.1"
+    }
+
+
+def test_a_missing_key_stops_the_migration(tmp_path: Path) -> None:
+    root = _benches_root(tmp_path, "")
     (root / "common_config.toml").write_text(
         "[resource_limits]\n"
         'smtp_server = "smtp.example.com"\n'
@@ -122,6 +140,27 @@ def test_an_undecryptable_password_is_dropped_not_stored(tmp_path: Path) -> None
 
     run(root)
 
+    limits = Toml.loads((root / "common_config.toml").read_text())["resource_limits"]
+    assert limits["smtp_password"] == "gAAAAABmbogus"
+
+
+def test_a_retry_migrates_once_the_key_is_restored(tmp_path: Path) -> None:
+    """Stopping must not be permanent: the bench is left unmarked, so a later
+    run with the right key still moves the mailbox across."""
+    root = _benches_root(tmp_path, "")
+    ciphertext = _encrypted(root, "secret")
+    key = (root / ".secret_key").read_bytes()
+    (root / "common_config.toml").write_text(
+        "[resource_limits]\n"
+        'smtp_server = "smtp.example.com"\n'
+        'smtp_email = "alerts@example.com"\n'
+        f'smtp_password = "{ciphertext}"\n'
+    )
+    (root / ".secret_key").unlink()
+
+    run(root)
+    (root / ".secret_key").write_bytes(key)
+    run(root)
+
     stored = json.loads((root / "main" / "sites" / "common_site_config.json").read_text())
-    assert "mail_password" not in stored
-    assert stored["disable_mail_smtp_authentication"] == 1
+    assert stored["mail_password"] == "secret"

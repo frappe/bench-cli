@@ -30,7 +30,14 @@ def run(benches_root: Path) -> None:
     if not bench_dirs:
         return
 
-    mail = _mail_config(benches_root, stored)
+    try:
+        mail = _mail_config(benches_root, stored)
+    except UnreadablePassword as error:
+        # Leave the ciphertext in place: it is the only copy, and a later run
+        # with the right key can still migrate it.
+        print(f"Skipping {PATCH_NAME}: {error}")
+        return
+
     for bench_dir in bench_dirs:
         if mail is not None:
             mail.write(bench_dir / "sites")
@@ -38,6 +45,10 @@ def run(benches_root: Path) -> None:
 
     if stored:
         _trim_common_config(common_path, raw, limits)
+
+
+class UnreadablePassword(Exception):
+    """The stored password cannot be decrypted, so migrating would destroy it."""
 
 
 _MAIL_KEYS = (
@@ -69,19 +80,22 @@ def _mail_config(benches_root: Path, stored: dict):
 
 def _decrypt(benches_root: Path, ciphertext: str) -> str:
     """The password was stored Fernet-encrypted under benches_root/.secret_key.
-    An unreadable one is dropped rather than carried over as ciphertext, which
-    would be stored as if it were the password itself."""
+    Raise on one that cannot be read: the migration trims the ciphertext once it
+    is done, so treating an unreadable password as blank would destroy the only
+    copy of it."""
     if not ciphertext:
         return ""
     key_path = benches_root / KEY_FILENAME
     if not key_path.exists():
-        return ""
+        raise UnreadablePassword(f"{key_path} is missing, so smtp_password cannot be decrypted.")
     from cryptography.fernet import Fernet, InvalidToken
 
     try:
         return Fernet(key_path.read_bytes()).decrypt(ciphertext.encode()).decode()
-    except (InvalidToken, ValueError):
-        return ""
+    except (InvalidToken, ValueError) as error:
+        raise UnreadablePassword(
+            f"the key at {key_path} does not match the stored smtp_password."
+        ) from error
 
 
 def _trim_common_config(path: Path, raw: dict, limits: dict) -> None:
