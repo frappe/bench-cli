@@ -39,13 +39,30 @@ def run(benches_root: Path) -> None:
         print(f"Skipping {PATCH_NAME}: {error}")
         return
 
+    migrated = []
     for bench_dir in bench_dirs:
-        if mail is not None:
-            mail.write(bench_dir / "sites")
+        if mail is not None and not _persisted(mail, bench_dir / "sites"):
+            # write() declines a bench with no common_site_config.json to merge
+            # into. Leave it unmarked so a later run, once the bench has been
+            # set up, still moves the mailbox across.
+            print(f"Skipping {bench_dir.name}: no sites/common_site_config.json to migrate into.")
+            continue
         mark_applied(bench_dir, PATCH_NAME)
+        migrated.append(bench_dir)
 
-    if stored:
+    # The legacy fields are the only copy, so keep them until every bench that
+    # needs the mailbox is holding one.
+    if stored and len(migrated) == len(bench_dirs):
         _trim_common_config(common_path, raw, limits)
+
+
+def _persisted(mail, sites_path: Path) -> bool:
+    """Write the mailbox and confirm it can be read back, rather than trusting
+    that a silent write did anything."""
+    from pilot.config.mail import MailConfig
+
+    mail.write(sites_path)
+    return MailConfig.read(sites_path).is_configured
 
 
 class UnmigratableMailbox(Exception):

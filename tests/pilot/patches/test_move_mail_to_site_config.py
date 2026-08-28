@@ -199,3 +199,64 @@ def test_a_corrected_mailbox_migrates_on_the_next_run(tmp_path: Path) -> None:
     stored = json.loads((root / "main" / "sites" / "common_site_config.json").read_text())
     assert stored["mail_password"] == "secret"
     assert stored["auto_email_id"] == "alerts@example.com"
+
+
+def test_a_bench_without_a_site_config_is_left_for_a_later_run(tmp_path: Path) -> None:
+    """write() has nothing to merge into before the bench is set up, so trimming
+    the legacy fields would lose the mailbox with no way to retry."""
+    root = _benches_root(tmp_path, "")
+    ciphertext = _encrypted(root, "secret")
+    (root / "common_config.toml").write_text(
+        "[resource_limits]\n"
+        'smtp_server = "smtp.example.com"\n'
+        'smtp_email = "alerts@example.com"\n'
+        f'smtp_password = "{ciphertext}"\n'
+    )
+    (root / "main" / "sites" / "common_site_config.json").unlink()
+
+    run(root)
+
+    limits = Toml.loads((root / "common_config.toml").read_text())["resource_limits"]
+    assert limits["smtp_server"] == "smtp.example.com"
+    assert not (root / "main" / ".patches.json").exists()
+
+
+def test_the_mailbox_moves_once_the_bench_has_a_site_config(tmp_path: Path) -> None:
+    root = _benches_root(tmp_path, "")
+    ciphertext = _encrypted(root, "secret")
+    (root / "common_config.toml").write_text(
+        "[resource_limits]\n"
+        'smtp_server = "smtp.example.com"\n'
+        'smtp_email = "alerts@example.com"\n'
+        f'smtp_password = "{ciphertext}"\n'
+    )
+    site_config = root / "main" / "sites" / "common_site_config.json"
+    site_config.unlink()
+    run(root)
+
+    site_config.write_text('{"db_host": "127.0.0.1"}')
+    run(root)
+
+    assert json.loads(site_config.read_text())["mail_password"] == "secret"
+
+
+def test_one_unmigrated_bench_holds_the_legacy_fields_for_all(tmp_path: Path) -> None:
+    """The legacy settings are shared, so they may only be trimmed once every
+    bench that needs them is holding its own copy."""
+    root = _benches_root(tmp_path, "", benches=("one", "two"))
+    ciphertext = _encrypted(root, "secret")
+    (root / "common_config.toml").write_text(
+        "[resource_limits]\n"
+        'smtp_server = "smtp.example.com"\n'
+        'smtp_email = "alerts@example.com"\n'
+        f'smtp_password = "{ciphertext}"\n'
+    )
+    (root / "two" / "sites" / "common_site_config.json").unlink()
+
+    run(root)
+
+    limits = Toml.loads((root / "common_config.toml").read_text())["resource_limits"]
+    assert limits["smtp_server"] == "smtp.example.com"
+    assert json.loads((root / "one" / "sites" / "common_site_config.json").read_text())[
+        "mail_password"
+    ] == "secret"
