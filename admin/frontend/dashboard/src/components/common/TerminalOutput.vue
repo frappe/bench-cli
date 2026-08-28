@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 
+import { isSelectionInside } from '@/utils/textSelection'
+
 defineProps({
   lines: { type: Array, default: () => [] },
   streaming: { type: Boolean, default: false },
@@ -12,14 +14,9 @@ defineProps({
 
 const el = ref(null)
 
-const hasSelectionInside = () => {
-  const selection = window.getSelection()
-  return !!selection && !selection.isCollapsed && el.value?.contains(selection.anchorNode)
-}
-
 const scrollToBottom = () => {
   nextTick(() => {
-    if (!el.value || hasSelectionInside()) return
+    if (!el.value || isSelectionInside(window.getSelection(), el.value)) return
     el.value.scrollTop = el.value.scrollHeight
   })
 }
@@ -62,8 +59,7 @@ defineExpose({ scrollToBottom })
   background: var(--terminal-bg);
   color: var(--terminal-fg);
 }
-/* The terminal stays dark in both app themes, so the global alpha-gray
-   ::selection (black at 11% in light mode) is invisible against it. */
+/* The terminal stays dark in both app themes, so the global ::selection is invisible here. */
 .terminal ::selection {
   background: rgb(255 255 255 / 0.25);
 }
