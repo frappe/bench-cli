@@ -11,7 +11,7 @@ import pytest
 
 from pilot.config import BenchConfig, MariaDBConfig, RedisConfig, WorkerConfig
 from pilot.config.alert_limit import ResourceLimitConfig
-from pilot.config.mail import MailConfig
+from pilot.config.mail import MailConfig, MalformedSiteConfig
 from pilot.core.alerts import check_mail_credentials, notify, send_mail
 from pilot.core.bench import Bench
 
@@ -293,3 +293,22 @@ def test_clearing_the_server_drops_the_stored_mailbox(tmp_path: Path) -> None:
     mail.write(tmp_path)
 
     assert json.loads((tmp_path / "common_site_config.json").read_text()) == {"db_host": "127.0.0.1"}
+
+
+def test_a_damaged_site_config_is_not_overwritten(tmp_path: Path) -> None:
+    """_load() would otherwise read a truncated file as empty, and the write
+    would replace every unrelated setting with mail fields alone."""
+    damaged = '{"db_host": "127.0.0.1", "redis_cache": trunc'
+    (tmp_path / "common_site_config.json").write_text(damaged)
+
+    with pytest.raises(MalformedSiteConfig):
+        MailConfig(server="smtp.test", email="alerts@test", password="secret").write(tmp_path)
+
+    assert (tmp_path / "common_site_config.json").read_text() == damaged
+
+
+def test_a_damaged_site_config_reads_as_no_mailbox(tmp_path: Path) -> None:
+    """The monitor tick reads this, so a damaged file must not raise into it."""
+    (tmp_path / "common_site_config.json").write_text("{ truncated")
+
+    assert MailConfig.read(tmp_path).is_configured is False

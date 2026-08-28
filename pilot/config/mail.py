@@ -24,6 +24,10 @@ CONFIG_KEYS = (
 )
 
 
+class MalformedSiteConfig(Exception):
+    """common_site_config.json cannot be parsed, so it must not be rewritten."""
+
+
 class MailEndpoint(NamedTuple):
     host: str
     port: int
@@ -78,7 +82,12 @@ class MailConfig:
 
     @classmethod
     def read(cls, sites_path: Path) -> "MailConfig":
-        config = _load(sites_path)
+        """A damaged file reads as no mailbox rather than raising: the monitor
+        tick calls this, and an unparsable file is not a reason to kill it."""
+        try:
+            config = _load(sites_path)
+        except MalformedSiteConfig:
+            return cls()
         return cls(
             server=config.get("mail_server", ""),
             port=config.get("mail_port", 0) or 0,
@@ -116,8 +125,13 @@ class MailConfig:
 
 
 def _load(sites_path: Path) -> dict:
+    """A missing file reads as empty, but an unparsable one raises: callers merge
+    into what comes back and write the result, so treating damaged JSON as empty
+    would drop every unrelated setting the file still holds."""
     path = sites_path / "common_site_config.json"
     try:
         return json.loads(path.read_text())
-    except (FileNotFoundError, ValueError):
+    except FileNotFoundError:
         return {}
+    except ValueError as error:
+        raise MalformedSiteConfig(f"{path} is not valid JSON: {error}") from error

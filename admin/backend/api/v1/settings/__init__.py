@@ -15,7 +15,7 @@ from pilot.config import (
     WAF_RULE_OPERATORS,
     BenchConfig,
 )
-from pilot.config.mail import MailConfig
+from pilot.config.mail import MailConfig, MalformedSiteConfig
 from pilot.config.monitor import bench_log_path, system_log_path
 from pilot.core.bench import Bench
 from pilot.core.bench.settings import (
@@ -281,7 +281,10 @@ def _save_settings_update(bench_root: Path, data: dict) -> dict:
             raise _SettingsUpdateRejected(error)
         _verify_s3_update(config, old_s3_config)
 
-    patcher.mail.write(bench_root / "sites")
+    try:
+        patcher.mail.write(bench_root / "sites")
+    except MalformedSiteConfig as error:
+        raise _SettingsUpdateRejected(str(error)) from error
     _apply_system_prompt(bench_root, data.get("llm") or {})
 
     return {

@@ -260,3 +260,38 @@ def test_one_unmigrated_bench_holds_the_legacy_fields_for_all(tmp_path: Path) ->
     assert json.loads((root / "one" / "sites" / "common_site_config.json").read_text())[
         "mail_password"
     ] == "secret"
+
+
+def test_legacy_fields_without_a_server_are_not_trimmed(tmp_path: Path) -> None:
+    """There is nowhere to migrate them to, so removing them would delete the
+    only stored credential."""
+    root = _benches_root(tmp_path, "")
+    ciphertext = _encrypted(root, "secret")
+    (root / "common_config.toml").write_text(
+        f'[resource_limits]\nsmtp_email = "alerts@example.com"\nsmtp_password = "{ciphertext}"\n'
+    )
+
+    run(root)
+
+    limits = Toml.loads((root / "common_config.toml").read_text())["resource_limits"]
+    assert limits["smtp_password"] == ciphertext
+    assert not (root / "main" / ".patches.json").exists()
+
+
+def test_a_bench_with_a_damaged_site_config_is_skipped(tmp_path: Path) -> None:
+    root = _benches_root(tmp_path, "")
+    ciphertext = _encrypted(root, "secret")
+    (root / "common_config.toml").write_text(
+        "[resource_limits]\n"
+        'smtp_server = "smtp.example.com"\n'
+        'smtp_email = "alerts@example.com"\n'
+        f'smtp_password = "{ciphertext}"\n'
+    )
+    damaged = '{"db_host": "127.0.0.1", "redis_cache": trunc'
+    (root / "main" / "sites" / "common_site_config.json").write_text(damaged)
+
+    run(root)
+
+    assert (root / "main" / "sites" / "common_site_config.json").read_text() == damaged
+    limits = Toml.loads((root / "common_config.toml").read_text())["resource_limits"]
+    assert limits["smtp_server"] == "smtp.example.com"

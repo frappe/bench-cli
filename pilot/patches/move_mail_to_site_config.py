@@ -58,10 +58,15 @@ def run(benches_root: Path) -> None:
 
 def _persisted(mail, sites_path: Path) -> bool:
     """Write the mailbox and confirm it can be read back, rather than trusting
-    that a silent write did anything."""
-    from pilot.config.mail import MailConfig
+    that a silent write did anything. A file that cannot be parsed is left
+    untouched rather than replaced with mail settings alone."""
+    from pilot.config.mail import MailConfig, MalformedSiteConfig
 
-    mail.write(sites_path)
+    try:
+        mail.write(sites_path)
+    except MalformedSiteConfig as error:
+        print(f"  {error}")
+        return False
     return MailConfig.read(sites_path).is_configured
 
 
@@ -86,6 +91,10 @@ def _mail_config(benches_root: Path, stored: dict):
     from pilot.config.mail import MailConfig
 
     if not stored.get("smtp_server"):
+        if stored:
+            raise UnmigratableMailbox(
+                "the stored mailbox has smtp_* fields but no smtp_server to migrate."
+            )
         return None
     mail = MailConfig(
         server=str(stored.get("smtp_server", "")),
