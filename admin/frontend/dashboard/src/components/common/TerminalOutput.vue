@@ -12,9 +12,15 @@ defineProps({
 
 const el = ref(null)
 
+const hasSelectionInside = () => {
+  const selection = window.getSelection()
+  return !!selection && !selection.isCollapsed && el.value?.contains(selection.anchorNode)
+}
+
 const scrollToBottom = () => {
   nextTick(() => {
-    if (el.value) el.value.scrollTop = el.value.scrollHeight
+    if (!el.value || hasSelectionInside()) return
+    el.value.scrollTop = el.value.scrollHeight
   })
 }
 
@@ -55,6 +61,11 @@ defineExpose({ scrollToBottom })
   padding: 0.75rem 0;
   background: var(--terminal-bg);
   color: var(--terminal-fg);
+}
+/* The terminal stays dark in both app themes, so the global alpha-gray
+   ::selection (black at 11% in light mode) is invisible against it. */
+.terminal ::selection {
+  background: rgb(255 255 255 / 0.25);
 }
 .terminal--fill {
   flex: 1;
