@@ -1,70 +1,53 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-
 import {
   Button,
-  Checkbox,
   Dialog,
   ErrorMessage,
   FormControl,
   LoadingText,
+  Switch,
   Tooltip,
   toast,
 } from 'frappe-ui'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
-import {
-  ListHeader,
-  ListRowItem,
-  ListRows,
-  ListView,
-} from 'frappe-ui/experimental'
-
+import IndexAnalysisPanel from '@/components/database/IndexAnalysisPanel.vue'
+import QueryAnalysisPanel from '@/components/database/QueryAnalysisPanel.vue'
+import ResultTable from '@/components/database/ResultTable.vue'
 import SizeBreakup from '@/components/database/SizeBreakup.vue'
-import DatabasePanel from '@/components/database/DatabasePanel.vue'
 import TableSizesDialog from '@/components/database/TableSizesDialog.vue'
+import ToggleContent from '@/components/database/ToggleContent.vue'
 
+import { apiErrorMessage } from '@/api/client'
 import { databaseApi } from '@/api/database'
 import { formatBytes } from '@/utils/format'
-import { apiErrorMessage } from '@/api/client'
 import { relativeTime } from '@/utils/taskFormat'
 
 const AUTO_REFRESH_INTERVAL_MS = 2000
 
-const processColumns = [
-  { label: '#', key: 'number', align: 'left', width: '2.5rem' },
-  { label: 'ID', key: 'id', align: 'left', width: 1 },
-  { label: 'State', key: 'state', align: 'left', width: 1 },
-  { label: 'Time', key: 'time', align: 'right', width: 1 },
-  { label: 'User', key: 'user', align: 'left', width: 1 },
-  { label: 'Host', key: 'host', align: 'left', width: 1.5 },
-  { label: 'Command', key: 'command', align: 'left', width: 1 },
-  { label: 'Query', key: 'query', align: 'left', width: 3 },
-  { label: '', key: 'actions', align: 'right', width: '5rem' },
-]
+const processColumns = ['ID', 'State', 'Time', 'User', 'Host', 'Command', 'Query']
+const processAlign = { Time: 'right' }
 
 const lockColumns = [
-  { label: '#', key: 'number', align: 'left', width: '2rem' },
-  { label: 'ID', key: 'id', align: 'left', width: 0.8 },
-  { label: 'Type', key: 'type', align: 'left', width: 0.8 },
-  { label: 'Mode', key: 'mode', align: 'left', width: 0.8 },
-  { label: 'Table', key: 'table', align: 'left', width: 1.2 },
-  { label: 'Index', key: 'index', align: 'left', width: 0.8 },
-  { label: 'State', key: 'state', align: 'left', width: 0.8 },
-  { label: 'Started', key: 'started', align: 'left', width: 1.2 },
-  { label: 'Query', key: 'query', align: 'left', width: 1.5 },
-  { label: 'Rows Locked', key: 'rowsLocked', align: 'right', width: 0.9 },
-  { label: 'Rows Modified', key: 'rowsModified', align: 'right', width: 1 },
+  'ID',
+  'Type',
+  'Mode',
+  'Table',
+  'Index',
+  'State',
+  'Started',
+  'Query',
+  'Rows Locked',
+  'Rows Modified',
 ]
+const lockAlign = { 'Rows Locked': 'right', 'Rows Modified': 'right' }
 
-const binlogColumns = [
-  { label: '#', key: 'number', align: 'left', width: '2rem' },
-  { label: '', key: 'selected', align: 'left', width: '2rem' },
-  { label: 'File', key: 'name', align: 'left', width: 2 },
-  { label: 'Date', key: 'date', align: 'left', width: 1.5 },
-  { label: 'Size', key: 'size', align: 'right', width: 1 },
-  { label: '', key: 'actions', align: 'right', width: '3rem' },
-]
+const binlogColumns = ['File', 'Date', 'Size']
+const binlogAlign = { Size: 'right' }
+
+const durationFormatters = { Time: (value) => (value === null ? '—' : `${Math.round(value)}s`) }
+const queryFullView = { Query: (value) => value }
 
 const route = useRoute()
 
@@ -98,56 +81,49 @@ const sizeLoading = ref(false)
 const sizeError = ref('')
 const showTableSizes = ref(false)
 
+const performance = ref(null)
+const performanceLoading = ref(false)
+const performanceError = ref('')
+
 const killTarget = ref(null)
 const showKillDialog = ref(false)
 const killing = ref(false)
 const killError = ref('')
 
-const selectedIndex = ref(-1)
 const showPurgeDialog = ref(false)
 const pendingIndex = ref(-1)
 const purging = ref(false)
 const purgeError = ref('')
 
 const processRows = computed(() =>
-  processes.value.map((process, index) => ({
-    number: index + 1,
-    id: process.id,
-    state: process.state || '—',
-    time: formatSeconds(process.duration_seconds),
-    user: process.user || '—',
-    host: process.host || '—',
-    command: process.command || '—',
-    query: truncateQuery(process.query),
-    process,
-  })),
+  processes.value.map((process) => [
+    process.id,
+    process.state || '—',
+    process.duration_seconds,
+    process.user || '—',
+    process.host || '—',
+    process.command || '—',
+    process.query || '—',
+  ]),
 )
 
 const lockRows = computed(() =>
-  lockWaits.value.map((row, index) => ({
-    number: index + 1,
-    id: row.id,
-    type: row.type,
-    mode: row.mode,
-    table: row.table || '—',
-    index: row.index || '—',
-    state: row.state || '—',
-    started: row.started || '—',
-    query: truncateQuery(row.query),
-    rowsLocked: row.rows_locked ?? '—',
-    rowsModified: row.rows_modified ?? '—',
-  })),
+  lockWaits.value.map((row) => [
+    row.id,
+    row.type,
+    row.mode,
+    row.table || '—',
+    row.index || '—',
+    row.state || '—',
+    row.started || '—',
+    row.query || '—',
+    row.rows_locked ?? '—',
+    row.rows_modified ?? '—',
+  ]),
 )
 
 const binlogRows = computed(() =>
-  binlogs.value.map((file, index) => ({
-    number: index + 1,
-    name: file.name,
-    date: fileAge(file),
-    size: formatBytes(file.size_bytes),
-    index,
-    isActive: index === binlogs.value.length - 1,
-  })),
+  binlogs.value.map((file) => [file.name, fileAge(file), formatBytes(file.size_bytes)]),
 )
 
 const killDetails = computed(() => {
@@ -183,10 +159,6 @@ const purgeDetails = computed(() => {
   ]
 })
 
-const lockColumnsBadge = computed(() =>
-  configuredEngine.value === 'postgres' ? "Some columns aren't available for PostgreSQL" : '',
-)
-
 // Binary logs are a MariaDB concept; the engine reports no status when it has none.
 const hasBinlogs = computed(() => Boolean(diagnostics.value?.binlog))
 
@@ -199,30 +171,18 @@ const siteOptions = computed(() => [
     .map((site) => ({ label: site.name, value: site.name })),
 ])
 
-const scopeBadge = computed(() => selectedSite.value)
+// Server-wide findings carry a hashed database name; the site that owns it is
+// what an operator actually recognises. Databases with no site keep their name.
+const siteByDatabase = computed(() =>
+  Object.fromEntries(
+    sites.value.filter((site) => site.db_name).map((site) => [site.db_name, site.name]),
+  ),
+)
 
-const MAX_QUERY_LENGTH = 120
+const formatSeconds = (seconds) => (seconds == null ? '—' : `${Math.round(seconds)}s`)
 
-// Long queries can be arbitrarily large single-line strings that would
-// otherwise force the table wider than the page.
-const truncateQuery = (query) => {
-  if (!query) return '—'
-  return query.length > MAX_QUERY_LENGTH ? `${query.slice(0, MAX_QUERY_LENGTH)}…` : query
-}
-
-const formatSeconds = (seconds) => {
-  return seconds == null ? '—' : `${Math.round(seconds)}s`
-}
-
-const fileAge = (file) => {
-  return file.modified_ms ? relativeTime(new Date(file.modified_ms).toISOString()) : '—'
-}
-
-// Purging is contiguous from the oldest file, so ticking one file ticks every
-// older file with it and unticking one clears everything newer.
-const toggle = (index, checked) => {
-  selectedIndex.value = checked ? index : index - 1
-}
+const fileAge = (file) =>
+  file.modified_ms ? relativeTime(new Date(file.modified_ms).toISOString()) : '—'
 
 const confirmKill = (process) => {
   killTarget.value = process
@@ -262,7 +222,6 @@ const purge = async () => {
     const result = await databaseApi.binlogs.purge(keepFrom.name)
     if (result.error) throw new Error(apiErrorMessage(result, 'Could not delete binary logs.'))
     showPurgeDialog.value = false
-    selectedIndex.value = -1
     toast.success('Binary logs deleted')
     await loadBinlogs()
   } catch (e) {
@@ -344,6 +303,22 @@ const loadSize = async () => {
   }
 }
 
+const loadPerformance = async () => {
+  performanceLoading.value = true
+  performanceError.value = ''
+  try {
+    const result = await databaseApi.performanceReport(selectedSite.value)
+    if (result?.error)
+      throw new Error(apiErrorMessage(result, 'Could not read the performance report.'))
+    performance.value = result
+  } catch (e) {
+    performance.value = null
+    performanceError.value = e.message || 'Could not read the performance report.'
+  } finally {
+    performanceLoading.value = false
+  }
+}
+
 const loadBinlogs = async () => {
   binlogsLoading.value = true
   binlogsError.value = ''
@@ -351,7 +326,6 @@ const loadBinlogs = async () => {
     const result = await databaseApi.binlogs.list()
     if (result?.error) throw new Error(apiErrorMessage(result, 'Could not load binary logs.'))
     binlogs.value = Array.isArray(result) ? result : []
-    selectedIndex.value = -1
   } catch (e) {
     binlogsError.value = e.message || 'Could not load binary logs.'
   } finally {
@@ -387,9 +361,19 @@ watch(selectedSite, () => {
   loadProcesses()
   loadLockWaits()
   loadSize()
+  loadPerformance()
 })
 
 onUnmounted(stopLockWaitsAutoRefresh)
+
+const loadSites = async () => {
+  try {
+    const result = await databaseApi.sites()
+    sites.value = Array.isArray(result) ? result : []
+  } catch {
+    sites.value = [] // Scoping is optional - the page still works server-wide.
+  }
+}
 
 const load = async () => {
   loading.value = true
@@ -402,7 +386,7 @@ const load = async () => {
     diagnostics.value = result
     configuredEngine.value = result.engine
     if (!result.supported) return
-    const panels = [loadSites(), loadSize(), loadProcesses(), loadLockWaits()]
+    const panels = [loadSites(), loadSize(), loadProcesses(), loadLockWaits(), loadPerformance()]
     if (hasBinlogs.value) panels.push(loadBinlogs())
     await Promise.all(panels)
     if (autoRefreshLocks.value) startLockWaitsAutoRefresh()
@@ -410,15 +394,6 @@ const load = async () => {
     error.value = e.message || 'Could not load database diagnostics.'
   } finally {
     loading.value = false
-  }
-}
-
-const loadSites = async () => {
-  try {
-    const result = await databaseApi.sites()
-    sites.value = Array.isArray(result) ? result : []
-  } catch {
-    sites.value = [] // Scoping is optional - the page still works server-wide.
   }
 }
 
@@ -436,174 +411,178 @@ onMounted(load)
     />
   </Teleport>
 
-  <div class="flex flex-col gap-4">
-    <div v-if="loading && !diagnostics" class="flex justify-center py-16">
-      <LoadingText />
-    </div>
+  <div v-if="loading && !diagnostics" class="flex justify-center py-16">
+    <LoadingText />
+  </div>
 
-    <div
-      v-else-if="diagnostics && !diagnostics.supported"
-      class="flex flex-col items-center gap-1 bg-surface-white py-14 border rounded-6 border-outline-gray-2 text-center"
-    >
-      <span class="size-6 text-ink-gray-3 lucide-database" />
-      <p class="font-medium text-ink-gray-7 text-sm">No database server</p>
-      <p class="max-w-sm text-ink-gray-5 text-xs">{{ diagnostics.reason }}</p>
-    </div>
+  <div
+    v-else-if="diagnostics && !diagnostics.supported"
+    class="flex flex-col items-center gap-1 bg-surface-white py-14 border rounded-6 border-outline-gray-2 text-center"
+  >
+    <span class="size-6 text-ink-gray-3 lucide-database" />
+    <p class="font-medium text-ink-gray-7 text-sm">No database server</p>
+    <p class="max-w-sm text-ink-gray-5 text-xs">{{ diagnostics.reason }}</p>
+  </div>
 
-    <ErrorMessage v-else-if="error" :message="error" />
+  <ErrorMessage v-else-if="error" :message="error" />
 
-    <template v-else-if="diagnostics">
-      <DatabasePanel
-        title="Database Size Breakup"
-        subtitle="Analyze how storage is used"
-        :badge="selectedSite ? scopeBadge : 'Server-wide'"
-        :loading="sizeLoading"
-        @refresh="loadSize"
-      >
-        <template v-if="selectedSite" #actions>
-          <Button variant="subtle" size="sm" @click="showTableSizes = true">View Details</Button>
-        </template>
-
-        <ErrorMessage v-if="sizeError" :message="sizeError" class="m-4" />
-        <p v-else-if="!size" class="py-6 text-ink-gray-5 text-sm text-center">
-          No results to display
-        </p>
-
-        <SizeBreakup v-else :size="size" />
-      </DatabasePanel>
-
-      <DatabasePanel
-        title="Database Processes"
-        subtitle="Analyze the processes of the database"
-        :badge="scopeBadge"
-        :loading="processesLoading"
-        @refresh="loadProcesses"
-      >
-        <ErrorMessage v-if="processesError" :message="processesError" class="m-4" />
-        <ListView
-          v-else
-          class="p-4 !w-full"
-          :columns="processColumns"
-          :rows="processRows"
-          row-key="number"
-          :options="{ selectable: false, showTooltip: false }"
-        >
-          <template #cell="{ column, row, item }">
-            <div v-if="column.key === 'actions'" class="flex justify-end">
-              <Button
-                variant="ghost"
-                theme="red"
-                size="sm"
-                iconLeft="lucide-x"
-                @click="confirmKill(row.process)"
-              >
-                Kill
-              </Button>
-            </div>
-
-            <ListRowItem v-else :column="column" :row="row" :item="item" :align="column.align" />
-          </template>
-
-          <ListHeader />
-          <ListRows v-if="processRows.length" />
-          <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-        </ListView>
-      </DatabasePanel>
-
-      <DatabasePanel
-        title="Database Locks"
-        subtitle="Analyze the lock waits of the database"
-        :badge="[scopeBadge, lockColumnsBadge]"
-        :loading="lockWaitsLoading"
-        show-auto-refresh
-        :auto-refresh="autoRefreshLocks"
-        @update:auto-refresh="autoRefreshLocks = $event"
-        @refresh="loadLockWaits"
-      >
-        <ErrorMessage v-if="lockWaitsError" :message="lockWaitsError" class="m-4" />
-        <ListView
-          v-else
-          class="p-4 !w-full"
-          :columns="lockColumns"
-          :rows="lockRows"
-          row-key="number"
-          :options="{ selectable: false, showTooltip: false }"
-        >
-          <template #cell="{ column, row, item }">
-            <ListRowItem :column="column" :row="row" :item="item" :align="column.align" />
-          </template>
-
-          <ListHeader />
-          <ListRows v-if="lockRows.length" />
-          <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-        </ListView>
-      </DatabasePanel>
-
-      <DatabasePanel
-        v-if="hasBinlogs"
-        title="Database Binary Logs"
-        subtitle="Manage the binary logs of the database"
-        :badge="selectedSite ? 'Server-wide' : ''"
-        :loading="binlogsLoading"
-        @refresh="loadBinlogs"
-      >
-        <ErrorMessage v-if="binlogsError" :message="binlogsError" class="m-4" />
-        <div v-else class="p-4">
-          <ListView
-            class="!w-full"
-            :columns="binlogColumns"
-            :rows="binlogRows"
-            row-key="number"
-            :options="{ selectable: false, showTooltip: false }"
-          >
-            <template #cell="{ column, row, item }">
-              <Checkbox
-                v-if="column.key === 'selected'"
-                :modelValue="row.index <= selectedIndex"
-                :disabled="row.isActive"
-                @update:modelValue="toggle(row.index, $event)"
-              />
-              <div v-else-if="column.key === 'actions'" class="flex justify-end">
-                <Tooltip v-if="!row.isActive" text="Delete this file and every older one">
-                  <Button
-                    variant="ghost"
-                    theme="red"
-                    size="sm"
-                    icon="lucide-trash-2"
-                    label="Delete binary logs"
-                    @click="confirmPurge(row.index)"
-                  />
-                </Tooltip>
-              </div>
-
-              <ListRowItem v-else :column="column" :row="row" :item="item" :align="column.align" />
-            </template>
-
-            <ListHeader />
-            <ListRows v-if="binlogRows.length" />
-            <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-          </ListView>
-
-          <div v-if="binlogs.length" class="flex flex-wrap justify-between items-center gap-2 mt-3">
-            <p class="text-ink-gray-5 text-xs">
-              The newest log is in use and cannot be deleted. Selecting a file also selects every
-              older one, because the server can only purge them together.
-            </p>
-
-            <Button
-              v-if="selectedIndex >= 0"
-              variant="subtle"
-              theme="red"
-              size="sm"
-              iconLeft="lucide-trash-2"
-              @click="confirmPurge(selectedIndex)"
-            >
-              Delete {{ selectedIndex + 1 }} file{{ selectedIndex === 0 ? '' : 's' }}
-            </Button>
-          </div>
+  <div v-else-if="diagnostics" class="flex flex-col mt-2">
+    <!-- Database Size Breakup -->
+    <div>
+      <div class="flex flex-row justify-between items-center">
+        <p class="font-medium text-ink-gray-8 text-base">Database Size Breakup</p>
+        <div class="flex flex-row gap-2">
+          <Button v-if="selectedSite" @click="showTableSizes = true">View Details</Button>
+          <Button :loading="sizeLoading" icon-left="rotate-ccw" @click="loadSize">Refresh</Button>
         </div>
-      </DatabasePanel>
-    </template>
+      </div>
+
+      <ErrorMessage v-if="sizeError" :message="sizeError" class="mt-4" />
+      <div v-else-if="size" class="mt-4">
+        <SizeBreakup :size="size" />
+      </div>
+    </div>
+
+    <!-- Database Processes -->
+    <ToggleContent
+      class="mt-3"
+      label="Database Processes"
+      sub-label="Analyze the processes of the database"
+    >
+      <template #actions>
+        <Button
+          :loading="processesLoading"
+          loading-text="Refreshing"
+          icon-left="rotate-ccw"
+          @click="loadProcesses"
+        >
+          Refresh
+        </Button>
+      </template>
+
+      <ErrorMessage v-if="processesError" :message="processesError" class="m-4" />
+      <ResultTable
+        v-else
+        class="mt-2"
+        :columns="processColumns"
+        :rows="processRows"
+        :align="processAlign"
+        :cell-formatters="durationFormatters"
+        :full-view-formatters="queryFullView"
+        action-header-label="Kill"
+        border-less
+        is-truncate-text
+      >
+        <template #action="{ index }">
+          <Button variant="ghost" theme="red" icon-left="x" @click="confirmKill(processes[index])">
+            Kill
+          </Button>
+        </template>
+      </ResultTable>
+    </ToggleContent>
+
+    <!-- Database Locks -->
+    <ToggleContent
+      class="mt-3"
+      label="Database Locks"
+      sub-label="Analyze the lock waits of the database"
+    >
+      <template #actions>
+        <div class="flex flex-row items-center gap-4">
+          <div class="flex flex-row items-center gap-2">
+            <Switch v-model="autoRefreshLocks" />
+            <p class="text-ink-gray-7 text-base">Auto Refresh</p>
+          </div>
+          <Button
+            :loading="lockWaitsLoading"
+            loading-text="Refreshing"
+            icon-left="rotate-ccw"
+            @click="loadLockWaits"
+          >
+            Refresh
+          </Button>
+        </div>
+      </template>
+
+      <ErrorMessage v-if="lockWaitsError" :message="lockWaitsError" class="m-4" />
+      <ResultTable
+        v-else
+        class="mt-2"
+        :columns="lockColumns"
+        :rows="lockRows"
+        :align="lockAlign"
+        :full-view-formatters="queryFullView"
+        border-less
+        is-truncate-text
+      />
+    </ToggleContent>
+
+    <QueryAnalysisPanel
+      class="mt-3"
+      :report="performance"
+      :loading="performanceLoading"
+      :error="performanceError"
+      :show-site="!selectedSite"
+      :site-by-database="siteByDatabase"
+      @refresh="loadPerformance"
+    />
+
+    <IndexAnalysisPanel
+      class="mt-3"
+      :report="performance"
+      :loading="performanceLoading"
+      :error="performanceError"
+      :show-site="!selectedSite"
+      :site-by-database="siteByDatabase"
+      @refresh="loadPerformance"
+    />
+
+    <!-- Database Binary Logs -->
+    <ToggleContent
+      v-if="hasBinlogs"
+      class="mt-3"
+      label="Database Binary Logs"
+      sub-label="Manage the binary logs of the database. They are shared by every bench on this server."
+    >
+      <template #actions>
+        <div class="flex flex-row items-center gap-2">
+          <Button
+            :loading="binlogsLoading"
+            loading-text="Refreshing"
+            icon-left="rotate-ccw"
+            @click="loadBinlogs"
+          >
+            Refresh
+          </Button>
+        </div>
+      </template>
+
+      <ErrorMessage v-if="binlogsError" :message="binlogsError" class="m-4" />
+      <div v-else>
+        <ResultTable
+          class="mt-2"
+          :columns="binlogColumns"
+          :rows="binlogRows"
+          :align="binlogAlign"
+          action-header-label="Delete"
+          border-less
+        >
+          <template #action="{ index }">
+            <Tooltip
+              v-if="index !== binlogs.length - 1"
+              text="Delete this file and every older one"
+            >
+              <Button variant="ghost" theme="red" icon="trash-2" @click="confirmPurge(index)" />
+            </Tooltip>
+          </template>
+        </ResultTable>
+
+        <p v-if="binlogs.length" class="px-3 pb-3 text-ink-gray-5 text-xs">
+          The newest log is in use and cannot be deleted. Deleting a file also deletes every older
+          one, because the server can only purge them together.
+        </p>
+      </div>
+    </ToggleContent>
   </div>
 
   <TableSizesDialog v-model:open="showTableSizes" :site="selectedSite" />

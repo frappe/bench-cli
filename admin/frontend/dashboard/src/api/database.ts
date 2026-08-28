@@ -29,6 +29,11 @@ export const databaseApi = {
   tableSizes: (site) =>
     request.get("database/table-sizes", { searchParams: { site } }).json(),
 
+  performanceReport: (site = "") =>
+    request
+      .get("database/performance-report", { searchParams: site ? { site } : {} })
+      .json(),
+
   killProcess: (processId) =>
     request
       .post("database/processlist/kill", { json: { process_id: processId } })

@@ -104,6 +104,62 @@ class StorageComponent:
     bytes: int
 
 
+@dataclass
+class TimeConsumingQuery:
+    """A normalized statement ranked by the total time spent running it.
+    `percent` is its share of the scope's total execution time."""
+
+    database: str | None
+    query: str | None
+    percent: float
+    calls: int
+    average_time_ms: float
+    total_time_ms: float
+
+
+@dataclass
+class FullTableScanQuery:
+    """A normalized statement that ran without a usable index."""
+
+    database: str | None
+    query: str | None
+    calls: int
+    rows_sent: int
+    rows_examined: int
+
+
+@dataclass
+class UnusedIndex:
+    database: str | None
+    table: str
+    index: str
+
+
+@dataclass
+class RedundantIndex:
+    """An index whose columns are already covered by `dominant_index`."""
+
+    database: str | None
+    table: str
+    redundant_index: str
+    redundant_index_columns: str
+    dominant_index: str
+    dominant_index_columns: str
+
+
+@dataclass
+class PerformanceReport:
+    """Query and index findings for a scope. Every section except
+    `redundant_indexes` is derived from Performance Schema and stays empty
+    while it is off, which `performance_schema_enabled` explains."""
+
+    performance_schema_enabled: bool
+    time_consuming_queries: list[TimeConsumingQuery]
+    full_table_scan_queries: list[FullTableScanQuery]
+    unused_indexes: list[UnusedIndex]
+    redundant_indexes: list[RedundantIndex]
+
+
 class Database(ABC):
     @abstractmethod
     def execute(self, query: str, read_only: bool = True) -> QueryResult: ...
@@ -145,6 +201,10 @@ class Database(ABC):
         raise NotImplementedError
 
     def get_lock_wait_rows(self, database: str = "") -> list[LockWaitRow]:
+        """`database` narrows the result to one database; empty means server-wide."""
+        raise NotImplementedError
+
+    def get_performance_report(self, database: str = "") -> PerformanceReport:
         """`database` narrows the result to one database; empty means server-wide."""
         raise NotImplementedError
 

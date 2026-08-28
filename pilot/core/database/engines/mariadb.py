@@ -11,6 +11,7 @@ from pilot.core.database.base import (
     DatabaseSize,
     LockWaitRow,
     LockWaitStatus,
+    PerformanceReport,
     QueryResult,
     StorageComponent,
     TableSize,
@@ -23,6 +24,7 @@ from pilot.core.database.engines.helpers import (
     rows_as_dicts,
     validated_process_id,
 )
+from pilot.core.database.engines.mariadb_performance import MariaDBPerformanceReport
 from pilot.exceptions import DatabaseError
 
 
@@ -296,6 +298,9 @@ class MariaDB(Database):
             for row in rows
         ]
 
+    def get_performance_report(self, database: str = "") -> PerformanceReport:
+        return MariaDBPerformanceReport(self._connect, database).build()
+
     def get_binlog_status(self) -> BinlogStatus:
         files = self.get_binlog_files()
         if not files:
@@ -350,9 +355,7 @@ class MariaDB(Database):
         data_dir = Path(self.get_data_directory() or ".")
         return [
             StorageComponent("binlog", "binary log", self.get_binlog_status().size_bytes),
-            StorageComponent(
-                "error_log", "error log", self._variable_file_size("@@log_error", data_dir)
-            ),
+            StorageComponent("error_log", "error log", self._variable_file_size("@@log_error", data_dir)),
             StorageComponent(
                 "slow_log",
                 "slow query log",

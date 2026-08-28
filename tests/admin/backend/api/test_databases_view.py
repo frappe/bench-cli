@@ -821,3 +821,55 @@ def test_purge_succeeds(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     provider.purge_binlogs.assert_called_once_with("mysql-bin.000002")
+
+
+def test_performance_report_returns_the_provider_payload(tmp_path: Path) -> None:
+    client = _client(tmp_path / "benches" / "current")
+    report = {
+        "performance_schema_enabled": False,
+        "time_consuming_queries": [],
+        "full_table_scan_queries": [],
+        "unused_indexes": [],
+        "redundant_indexes": [
+            {
+                "database": "site_db",
+                "table": "tabUser",
+                "redundant_index": "lft",
+                "redundant_index_columns": "lft",
+                "dominant_index": "lft_rgt",
+                "dominant_index_columns": "lft,rgt",
+            }
+        ],
+    }
+    patcher, provider = _patched_provider(**{"get_performance_report.return_value": report})
+    with patcher:
+        response = client.get("/api/v1/database/performance-report?site=shop.local")
+
+    assert response.status_code == 200
+    assert response.get_json() == report
+    provider.get_performance_report.assert_called_once_with("shop.local")
+
+
+def test_performance_report_defaults_to_the_whole_server(tmp_path: Path) -> None:
+    client = _client(tmp_path / "benches" / "current")
+    patcher, provider = _patched_provider(**{"get_performance_report.return_value": {}})
+    with patcher:
+        client.get("/api/v1/database/performance-report")
+
+    provider.get_performance_report.assert_called_once_with("")
+
+
+def test_performance_report_maps_unsupported_engine_to_422(tmp_path: Path) -> None:
+    client = _client(tmp_path / "benches" / "current")
+    patcher, _ = _patched_provider(
+        **{
+            "get_performance_report.side_effect": DatabaseError(
+                "The selected engine does not support this operation"
+            )
+        }
+    )
+    with patcher:
+        response = client.get("/api/v1/database/performance-report")
+
+    assert response.status_code == 422
+    assert response.get_json()["error"]["code"] == "performance_report_unavailable"

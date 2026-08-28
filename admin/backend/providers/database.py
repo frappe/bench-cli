@@ -7,9 +7,7 @@ from pilot.config import BenchConfig
 from pilot.core.database import Database, make_database, make_site_database, site_database_name
 from pilot.exceptions import DatabaseError
 
-NO_DATABASE_SERVER = (
-    "SQLite is a per-site database file, not a shared server"
-)
+NO_DATABASE_SERVER = "SQLite is a per-site database file, not a shared server"
 NOT_SUPPORTED = "The selected engine does not support this operation"
 
 
@@ -57,6 +55,10 @@ class DatabaseDiagnosticsProvider:
     def get_lock_wait_rows(self, site: str = "") -> list[dict]:
         rows = self._call(self._require_server().get_lock_wait_rows, self._database_for(site))
         return [asdict(row) for row in rows]
+
+    def get_performance_report(self, site: str = "") -> dict:
+        report = self._call(self._require_server().get_performance_report, self._database_for(site))
+        return asdict(report)
 
     def get_database_size(self, site: str = "") -> dict:
         size = self._call(self._connection_for(site).get_database_size)

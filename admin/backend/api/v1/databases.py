@@ -97,7 +97,15 @@ def list_query_sites() -> ResponseReturnValue:
             config = json.loads((d / "site_config.json").read_text())
         except (OSError, ValueError):
             config = {}
-        sites.append({"name": d.name, "db_type": config.get("db_type", "mariadb")})
+        sites.append(
+            {
+                "name": d.name,
+                "db_type": config.get("db_type", "mariadb"),
+                # Lets the analyzer label server-wide findings with the site
+                # that owns the database instead of its hashed name.
+                "db_name": config.get("db_name", ""),
+            }
+        )
     return jsonify(sites)
 
 
@@ -418,6 +426,20 @@ def get_lock_wait_rows():
         return error_response("lockwaits_unavailable", str(exc), 422)
     except Exception:
         return error_response("lockwaits_unavailable", "Could not read database lock waits.", 500)
+
+
+@database_bp.get("/performance-report")
+def get_performance_report() -> ResponseReturnValue:
+    try:
+        return jsonify(_provider().get_performance_report(request.args.get("site", "")))
+    except DatabaseError as exc:
+        return error_response("performance_report_unavailable", str(exc), 422)
+    except Exception:
+        return error_response(
+            "performance_report_unavailable",
+            "Could not read the database performance report.",
+            500,
+        )
 
 
 @database_bp.get("/size")
