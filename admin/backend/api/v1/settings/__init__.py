@@ -283,8 +283,8 @@ def _save_settings_update(bench_root: Path, data: dict) -> dict:
 
     try:
         patcher.mail.write(bench_root / "sites")
-    except MalformedSiteConfig as error:
-        raise _SettingsUpdateRejected(str(error)) from error
+    except MalformedSiteConfig as malformed:
+        raise _SettingsUpdateRejected(str(malformed)) from malformed
     _apply_system_prompt(bench_root, data.get("llm") or {})
 
     return {
