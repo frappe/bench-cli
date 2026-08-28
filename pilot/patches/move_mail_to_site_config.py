@@ -32,9 +32,10 @@ def run(benches_root: Path) -> None:
 
     try:
         mail = _mail_config(benches_root, stored)
-    except UnreadablePassword as error:
-        # Leave the ciphertext in place: it is the only copy, and a later run
-        # with the right key can still migrate it.
+    except UnmigratableMailbox as error:
+        # Leave the old settings in place: they are the only copy, and a later
+        # run - once the key is restored or the mailbox corrected - still moves
+        # them across.
         print(f"Skipping {PATCH_NAME}: {error}")
         return
 
@@ -47,8 +48,9 @@ def run(benches_root: Path) -> None:
         _trim_common_config(common_path, raw, limits)
 
 
-class UnreadablePassword(Exception):
-    """The stored password cannot be decrypted, so migrating would destroy it."""
+class UnmigratableMailbox(Exception):
+    """The stored mailbox cannot be moved as it stands, and the old fields are
+    the only copy of it, so migrating would destroy it."""
 
 
 _MAIL_KEYS = (
@@ -68,7 +70,7 @@ def _mail_config(benches_root: Path, stored: dict):
 
     if not stored.get("smtp_server"):
         return None
-    return MailConfig(
+    mail = MailConfig(
         server=str(stored.get("smtp_server", "")),
         port=int(stored.get("smtp_port", 0) or 0),
         email=str(stored.get("smtp_email", "")),
@@ -76,6 +78,21 @@ def _mail_config(benches_root: Path, stored: dict):
         password=_decrypt(benches_root, str(stored.get("smtp_password", ""))),
         use_ssl=bool(stored.get("smtp_use_ssl", False)),
     )
+    # write() silently declines a mailbox it cannot validate, so refuse to trim
+    # the old fields rather than dropping it on the floor.
+    if not mail.is_configured:
+        raise UnmigratableMailbox(
+            f"the stored mailbox is not usable as configured ({_reason(mail)})."
+        )
+    return mail
+
+
+def _reason(mail) -> str:
+    try:
+        mail.get_endpoint()
+    except ValueError as error:
+        return str(error).rstrip(".")
+    return "incomplete settings"
 
 
 def _decrypt(benches_root: Path, ciphertext: str) -> str:
@@ -87,13 +104,13 @@ def _decrypt(benches_root: Path, ciphertext: str) -> str:
         return ""
     key_path = benches_root / KEY_FILENAME
     if not key_path.exists():
-        raise UnreadablePassword(f"{key_path} is missing, so smtp_password cannot be decrypted.")
+        raise UnmigratableMailbox(f"{key_path} is missing, so smtp_password cannot be decrypted.")
     from cryptography.fernet import Fernet, InvalidToken
 
     try:
         return Fernet(key_path.read_bytes()).decrypt(ciphertext.encode()).decode()
     except (InvalidToken, ValueError) as error:
-        raise UnreadablePassword(
+        raise UnmigratableMailbox(
             f"the key at {key_path} does not match the stored smtp_password."
         ) from error
 

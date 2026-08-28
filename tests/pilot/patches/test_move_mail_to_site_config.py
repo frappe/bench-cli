@@ -164,3 +164,38 @@ def test_a_retry_migrates_once_the_key_is_restored(tmp_path: Path) -> None:
 
     stored = json.loads((root / "main" / "sites" / "common_site_config.json").read_text())
     assert stored["mail_password"] == "secret"
+
+
+def test_an_unusable_mailbox_stops_the_migration(tmp_path: Path) -> None:
+    """write() declines a mailbox it cannot validate, so trimming the old fields
+    would drop it with no copy left and no way to retry."""
+    root = _benches_root(tmp_path, "")
+    ciphertext = _encrypted(root, "secret")
+    for bad in ('smtp_email = "not-an-address"', 'smtp_email = "a@b.test"\nsmtp_port = 70000'):
+        (root / "common_config.toml").write_text(
+            f'[resource_limits]\nsmtp_server = "smtp.example.com"\n{bad}\n'
+            f'smtp_password = "{ciphertext}"\n'
+        )
+
+        run(root)
+
+        limits = Toml.loads((root / "common_config.toml").read_text())["resource_limits"]
+        assert limits["smtp_server"] == "smtp.example.com"
+        assert json.loads((root / "main" / "sites" / "common_site_config.json").read_text()) == {
+            "db_host": "127.0.0.1"
+        }
+
+
+def test_a_corrected_mailbox_migrates_on_the_next_run(tmp_path: Path) -> None:
+    root = _benches_root(tmp_path, "")
+    ciphertext = _encrypted(root, "secret")
+    base = f'[resource_limits]\nsmtp_server = "smtp.example.com"\nsmtp_password = "{ciphertext}"\n'
+    (root / "common_config.toml").write_text(base + 'smtp_email = "not-an-address"\n')
+    run(root)
+
+    (root / "common_config.toml").write_text(base + 'smtp_email = "alerts@example.com"\n')
+    run(root)
+
+    stored = json.loads((root / "main" / "sites" / "common_site_config.json").read_text())
+    assert stored["mail_password"] == "secret"
+    assert stored["auto_email_id"] == "alerts@example.com"
