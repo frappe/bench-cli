@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, ErrorMessage, TabButtons } from 'frappe-ui'
+import { Button, ErrorMessage, TabButtons, Tooltip } from 'frappe-ui'
 import { computed, ref } from 'vue'
 
 import PerformanceSchemaNotice from '@/components/database/PerformanceSchemaNotice.vue'
@@ -87,14 +87,15 @@ const alignColumns = {
     sub-label="Check the concerning queries that might be affecting your database performance"
   >
     <template #actions>
-      <Button
-        icon-left="rotate-ccw"
-        :loading="loading"
-        loading-text="Refreshing"
-        @click="$emit('refresh')"
-      >
-        Refresh
-      </Button>
+      <Tooltip text="Refresh query analysis">
+        <Button
+          variant="ghost"
+          icon="lucide-refresh-cw"
+          :loading="loading"
+          aria-label="Refresh query analysis"
+          @click="$emit('refresh')"
+        />
+      </Tooltip>
     </template>
 
     <ErrorMessage v-if="error" :message="error" class="m-4" />

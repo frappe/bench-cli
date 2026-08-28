@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button, ErrorMessage, TabButtons } from 'frappe-ui'
+import { Button, ErrorMessage, TabButtons, Tooltip } from 'frappe-ui'
 import { computed, ref } from 'vue'
 
 import PerformanceSchemaNotice from '@/components/database/PerformanceSchemaNotice.vue'
@@ -71,14 +71,15 @@ const activeTab = computed(() => tabs.value.find((entry) => entry.value === tab.
 <template>
   <ToggleContent label="Database Index Analysis" sub-label="Analyze the indexes of the database">
     <template #actions>
-      <Button
-        icon-left="rotate-ccw"
-        :loading="loading"
-        loading-text="Refreshing"
-        @click="$emit('refresh')"
-      >
-        Refresh
-      </Button>
+      <Tooltip text="Refresh index analysis">
+        <Button
+          variant="ghost"
+          icon="lucide-refresh-cw"
+          :loading="loading"
+          aria-label="Refresh index analysis"
+          @click="$emit('refresh')"
+        />
+      </Tooltip>
     </template>
 
     <ErrorMessage v-if="error" :message="error" class="m-4" />

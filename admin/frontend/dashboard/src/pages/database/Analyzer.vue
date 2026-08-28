@@ -433,7 +433,15 @@ onMounted(load)
         <p class="font-medium text-ink-gray-8 text-base">Database Size Breakup</p>
         <div class="flex flex-row gap-2">
           <Button v-if="selectedSite" @click="showTableSizes = true">View Details</Button>
-          <Button :loading="sizeLoading" icon-left="rotate-ccw" @click="loadSize">Refresh</Button>
+          <Tooltip text="Refresh database size">
+            <Button
+              variant="ghost"
+              icon="lucide-refresh-cw"
+              :loading="sizeLoading"
+              aria-label="Refresh database size"
+              @click="loadSize"
+            />
+          </Tooltip>
         </div>
       </div>
 
@@ -450,14 +458,15 @@ onMounted(load)
       sub-label="Analyze the processes of the database"
     >
       <template #actions>
-        <Button
-          :loading="processesLoading"
-          loading-text="Refreshing"
-          icon-left="rotate-ccw"
-          @click="loadProcesses"
-        >
-          Refresh
-        </Button>
+        <Tooltip text="Refresh processes">
+          <Button
+            variant="ghost"
+            icon="lucide-refresh-cw"
+            :loading="processesLoading"
+            aria-label="Refresh processes"
+            @click="loadProcesses"
+          />
+        </Tooltip>
       </template>
 
       <ErrorMessage v-if="processesError" :message="processesError" class="m-4" />
@@ -493,14 +502,15 @@ onMounted(load)
             <Switch v-model="autoRefreshLocks" />
             <p class="text-ink-gray-7 text-base">Auto Refresh</p>
           </div>
-          <Button
-            :loading="lockWaitsLoading"
-            loading-text="Refreshing"
-            icon-left="rotate-ccw"
-            @click="loadLockWaits"
-          >
-            Refresh
-          </Button>
+          <Tooltip text="Refresh lock waits">
+            <Button
+              variant="ghost"
+              icon="lucide-refresh-cw"
+              :loading="lockWaitsLoading"
+              aria-label="Refresh lock waits"
+              @click="loadLockWaits"
+            />
+          </Tooltip>
         </div>
       </template>
 
@@ -545,16 +555,15 @@ onMounted(load)
       sub-label="Manage the binary logs of the database. They are shared by every bench on this server."
     >
       <template #actions>
-        <div class="flex flex-row items-center gap-2">
+        <Tooltip text="Refresh binary logs">
           <Button
+            variant="ghost"
+            icon="lucide-refresh-cw"
             :loading="binlogsLoading"
-            loading-text="Refreshing"
-            icon-left="rotate-ccw"
+            aria-label="Refresh binary logs"
             @click="loadBinlogs"
-          >
-            Refresh
-          </Button>
-        </div>
+          />
+        </Tooltip>
       </template>
 
       <ErrorMessage v-if="binlogsError" :message="binlogsError" class="m-4" />
