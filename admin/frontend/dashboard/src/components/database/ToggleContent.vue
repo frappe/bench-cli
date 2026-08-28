@@ -12,7 +12,7 @@ const isVisible = ref(false)
 <template>
   <div class="border rounded-4 text-base">
     <div
-      class="flex flex-row justify-between items-center gap-2 p-4"
+      class="flex flex-row justify-between items-start gap-2 p-4"
       :class="{ '!pb-2': isVisible }"
     >
       <button
