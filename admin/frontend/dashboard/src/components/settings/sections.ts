@@ -4,6 +4,7 @@ import DatabaseQuickActions from '@/components/settings/DatabaseQuickActions.vue
 import Firewall from '@/components/settings/Firewall.vue'
 import Git from '@/components/settings/Git.vue'
 import LLM from '@/components/settings/LLM.vue'
+import Mail from '@/components/settings/Mail.vue'
 import Notifications from '@/components/settings/Notifications.vue'
 import S3Bucket from '@/components/settings/S3Bucket.vue'
 import SshKeys from '@/components/settings/SshKeys.vue'
@@ -37,6 +38,12 @@ export const GENERAL_SECTIONS = [
     label: 'Notification settings',
     description: 'Alert when host resource usage crosses a limit.',
     component: Notifications,
+  },
+  {
+    id: 'mail',
+    label: 'Mail settings',
+    description: 'Send alerts to a mailbox alongside Central and webhooks.',
+    component: Mail,
   },
   {
     id: 'workers',

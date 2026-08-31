@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import contextlib
 import json
+import smtplib
+import ssl
 import time
 import typing
 import urllib.request
+from email.message import EmailMessage
 from pathlib import Path
 
+from pilot.config.mail import MailConfig
 from pilot.integrations.central import CentralClient, CentralClientError
 
 if typing.TYPE_CHECKING:
@@ -33,16 +38,73 @@ def send_alert(endpoint: str, token: str, payload: dict[str, typing.Any]) -> Non
         pass
 
 
-def notify(bench: "Bench", payload: dict[str, typing.Any]) -> bool:
-    """If we made it to any of the webhooks we will mark this as a successful delivery."""
-    delivered = False
+@contextlib.contextmanager
+def smtp_session(mail: MailConfig) -> typing.Iterator[smtplib.SMTP]:
+    """A connected, encrypted, logged-in SMTP session for these settings."""
+    endpoint = mail.get_endpoint()
+    # smtplib's own default context does not verify the peer, so pass one that does:
+    # an unverified hop would hand the password to whoever answers.
+    context = ssl.create_default_context()
+    server: smtplib.SMTP
+    if endpoint.is_ssl:
+        server = smtplib.SMTP_SSL(
+            endpoint.host, endpoint.port, timeout=ALERT_TIMEOUT_SECONDS, context=context
+        )
+    else:
+        server = smtplib.SMTP(endpoint.host, endpoint.port, timeout=ALERT_TIMEOUT_SECONDS)
+    with server:
+        if not endpoint.is_ssl:
+            server.starttls(context=context)
+        if endpoint.username:
+            server.login(endpoint.username, mail.password)
+        yield server
 
-    for endpoint, token in bench.config.resource_limits.webhook_endpoints.items():
+
+def check_mail_credentials(mail: MailConfig) -> None:
+    """Open a session and drop it, so bad settings are reported while they are
+    being saved rather than at the first alert. Raises like `send_mail` does."""
+    with smtp_session(mail):
+        pass
+
+
+def send_mail(mail: MailConfig, recipients: list[str], payload: dict[str, typing.Any]) -> None:
+    """Email one alert to every configured recipient.
+
+    Raises if any recipient is refused: a partial send still leaves someone
+    uninformed, and the caller retires the alert once this returns.
+    """
+    message = EmailMessage()
+    message["Subject"] = f"[Pilot] {payload['message']}"
+    message["From"] = mail.get_endpoint().sender
+    message["To"] = ", ".join(recipients)
+    message.set_content(f"{payload['message']}\n\n{json.dumps(payload['context'], indent=2)}")
+
+    with smtp_session(mail) as server:
+        refused = server.send_message(message)
+        if refused:
+            raise smtplib.SMTPRecipientsRefused(refused)
+
+
+def notify(bench: "Bench", payload: dict[str, typing.Any]) -> bool:
+    """If we made it to any of the webhooks or mailboxes we will mark this as a successful delivery."""
+    delivered = False
+    limits = bench.config.resource_limits
+
+    for endpoint, token in limits.webhook_endpoints.items():
         try:
             send_alert(endpoint, token, payload)
         except OSError:
             continue
         delivered = True
+
+    mail = MailConfig.read(bench.sites_path)
+    if mail.is_configured and limits.email_recipients:
+        try:
+            send_mail(mail, limits.email_recipients, payload)
+        except OSError:
+            pass
+        else:
+            delivered = True
 
     try:
         CentralClient(bench).notify_central(**payload)
