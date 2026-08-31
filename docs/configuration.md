@@ -260,8 +260,6 @@ Saving these through the Admin UI opens a session against the server first, so a
 
 `email_recipients` is edited on the notification settings page, the mailbox on its own one, so either may be saved before the other exists.
 
-A bench upgraded from a version that kept the mailbox in `[resource_limits]` is migrated by the `move_mail_to_site_config` patch, which decrypts the old password and writes it into each bench's `sites/common_site_config.json`. Since that file is per bench, a fleet that shared one mailbox gets a copy in every bench.
-
 `BenchConfig` is the only reader/writer of this file - it merges these values into `config.mariadb`, `config.postgres`, `config.letsencrypt`, `config.central`, `config.datum`, and `config.admin.jwks_url`/`jwks_audience` on every read, and writes them back on save. Other code reaches these values through a bench's own `BenchConfig`, never by reading `common_config.toml` directly. `admin.tls` is not part of this file - it stays a per-bench choice in `bench.toml`.
 
 `[datum]` is where the monitor ships metrics. With both `endpoint` and `token` set, and the optional `datum` package installed (`pip install pilot[metrics]`), every collection tick is posted as one batch of samples. The JSON-Lines monitor logs are written either way - they stay the Admin UI's source of truth.
