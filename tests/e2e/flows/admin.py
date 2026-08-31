@@ -17,7 +17,9 @@ def open_root(page: Page, base_url: str) -> None:
     try:
         page.goto(f"{base_url}/", wait_until="commit")
     except PlaywrightError as error:
-        if "interrupted by another navigation" not in str(error):
+        # Only the known redirect is benign: anything else interrupting the
+        # navigation is a real failure and must surface here, not as a later timeout.
+        if f'interrupted by another navigation to "{base_url}/sites"' not in str(error):
             raise
 
 
