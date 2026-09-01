@@ -14,10 +14,9 @@
 #
 #   {{ cli_root }}/benches/<bench>/logs/*.log
 #
-# Frappe mirrors every site-context line into the site log dir
-# byte-for-byte, so we tail the bench dir only to avoid shipping
-# each line twice. Broad *.log pattern; formats with their own
-# parser or that we skip are excluded below.
+# Broad *.log pattern; formats with their own parser or that we
+# skip are excluded below. See docs/architecture.md for why the
+# site log mirror is not tailed here.
 # ============================================================
 
 [INPUT]
