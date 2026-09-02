@@ -63,7 +63,9 @@ def test_sqlite_bench_has_no_database_server(tmp_path) -> None:
     from pilot.config import BenchConfig
     from pilot.exceptions import DatabaseError
 
-    (tmp_path / "bench.toml").write_text(BenchConfig.from_flat(tmp_path.name, {"db_type": "sqlite"}).dumps())
+    (tmp_path / "bench.toml").write_text(
+        BenchConfig.from_flat(tmp_path.name, {"db_type": "sqlite"}).dumps()
+    )
     provider = DatabaseDiagnosticsProvider(tmp_path)
 
     assert provider.get_diagnostics() == {
@@ -108,31 +110,17 @@ def test_get_lock_wait_rows_shapes_rows_as_dicts() -> None:
     db = Mock()
     db.get_lock_wait_rows.return_value = [
         LockWaitRow(
-            id="42",
-            type="RECORD",
-            mode="X",
-            table="tabDoc",
-            index="PRIMARY",
-            state="LOCK WAIT",
-            started="2026-01-01T00:00:00",
-            query="UPDATE tabDoc SET x=1",
-            rows_locked=3,
-            rows_modified=1,
+            id="42", type="RECORD", mode="X", table="tabDoc", index="PRIMARY",
+            state="LOCK WAIT", started="2026-01-01T00:00:00", query="UPDATE tabDoc SET x=1",
+            rows_locked=3, rows_modified=1,
         )
     ]
 
     assert _provider(db).get_lock_wait_rows() == [
         {
-            "id": "42",
-            "type": "RECORD",
-            "mode": "X",
-            "table": "tabDoc",
-            "index": "PRIMARY",
-            "state": "LOCK WAIT",
-            "started": "2026-01-01T00:00:00",
-            "query": "UPDATE tabDoc SET x=1",
-            "rows_locked": 3,
-            "rows_modified": 1,
+            "id": "42", "type": "RECORD", "mode": "X", "table": "tabDoc", "index": "PRIMARY",
+            "state": "LOCK WAIT", "started": "2026-01-01T00:00:00", "query": "UPDATE tabDoc SET x=1",
+            "rows_locked": 3, "rows_modified": 1,
         }
     ]
 
@@ -250,19 +238,23 @@ def test_unsupported_operation_surfaces_generic_message() -> None:
         _provider(db).get_binlog_files()
 
 
-def test_get_performance_report_resolves_the_site_to_its_database() -> None:
-    from unittest.mock import patch
-
+def _empty_report(enabled: bool):
     from pilot.core.database import PerformanceReport
 
-    db = Mock()
-    db.get_performance_report.return_value = PerformanceReport(
-        performance_schema_enabled=True,
+    return PerformanceReport(
+        performance_schema_enabled=enabled,
         time_consuming_queries=[],
         full_table_scan_queries=[],
         unused_indexes=[],
         redundant_indexes=[],
     )
+
+
+def test_get_performance_report_resolves_the_site_to_its_database() -> None:
+    from unittest.mock import patch
+
+    db = Mock()
+    db.get_performance_report.return_value = _empty_report(True)
     provider = DatabaseDiagnosticsProvider(bench_root=None, database=db)
 
     with patch("admin.backend.providers.database.site_database_name", return_value="_abc123") as resolve:
@@ -274,17 +266,11 @@ def test_get_performance_report_resolves_the_site_to_its_database() -> None:
 
 
 def test_get_performance_report_without_a_site_covers_the_server() -> None:
-    from pilot.core.database import PerformanceReport
-
     db = Mock()
-    db.get_performance_report.return_value = PerformanceReport(
-        performance_schema_enabled=False,
-        time_consuming_queries=[],
-        full_table_scan_queries=[],
-        unused_indexes=[],
-        redundant_indexes=[],
-    )
+    db.get_performance_report.return_value = _empty_report(False)
+
     DatabaseDiagnosticsProvider(bench_root=None, database=db).get_performance_report()
+
     db.get_performance_report.assert_called_once_with("")
 
 
@@ -295,5 +281,6 @@ def test_get_performance_report_maps_unsupported_engine() -> None:
 
     db = Mock()
     db.get_performance_report.side_effect = NotImplementedError
+
     with pytest.raises(DatabaseError):
         DatabaseDiagnosticsProvider(bench_root=None, database=db).get_performance_report()

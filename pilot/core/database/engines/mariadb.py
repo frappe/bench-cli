@@ -355,7 +355,9 @@ class MariaDB(Database):
         data_dir = Path(self.get_data_directory() or ".")
         return [
             StorageComponent("binlog", "binary log", self.get_binlog_status().size_bytes),
-            StorageComponent("error_log", "error log", self._variable_file_size("@@log_error", data_dir)),
+            StorageComponent(
+                "error_log", "error log", self._variable_file_size("@@log_error", data_dir)
+            ),
             StorageComponent(
                 "slow_log",
                 "slow query log",

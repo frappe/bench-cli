@@ -7,7 +7,9 @@ from pilot.config import BenchConfig
 from pilot.core.database import Database, make_database, make_site_database, site_database_name
 from pilot.exceptions import DatabaseError
 
-NO_DATABASE_SERVER = "SQLite is a per-site database file, not a shared server"
+NO_DATABASE_SERVER = (
+    "SQLite is a per-site database file, not a shared server"
+)
 NOT_SUPPORTED = "The selected engine does not support this operation"
 
 
