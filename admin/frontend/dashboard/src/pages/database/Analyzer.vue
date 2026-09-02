@@ -74,6 +74,7 @@ const lockWaits = ref([])
 const lockWaitsLoading = ref(false)
 const lockWaitsError = ref('')
 const autoRefreshLocks = ref(true)
+let performanceRequestVersion = 0
 let lockWaitsTimer = null
 let lockWaitsPollVersion = 0
 let lockWaitsRequest = null
@@ -338,21 +339,21 @@ const loadSize = async () => {
 }
 
 const loadPerformance = async () => {
-  const site = selectedSite.value
+  const version = ++performanceRequestVersion
   performanceLoading.value = true
   performanceError.value = ''
   try {
-    const result = await databaseApi.performanceReport(site)
-    if (site !== selectedSite.value) return
+    const result = await databaseApi.performanceReport(selectedSite.value)
+    if (version !== performanceRequestVersion) return
     if (result?.error)
       throw new Error(apiErrorMessage(result, 'Could not read the performance report.'))
     performance.value = result
   } catch (e) {
-    if (site !== selectedSite.value) return
+    if (version !== performanceRequestVersion) return
     performance.value = null
     performanceError.value = e.message || 'Could not read the performance report.'
   } finally {
-    if (site === selectedSite.value) performanceLoading.value = false
+    if (version === performanceRequestVersion) performanceLoading.value = false
   }
 }
 
