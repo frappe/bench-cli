@@ -1,4 +1,6 @@
-export const STATUS_CONFIG = {
+import { relativeTime } from './time.ts'
+
+const STATUS_CONFIG = {
   queued: {
     label: 'Queued',
     theme: 'blue',
@@ -63,6 +65,7 @@ const COMMAND_LABELS = {
 export const TASK_TYPES = [
   {
     value: 'sites',
+    icon: 'lucide-globe',
     label: 'Sites',
     commands: [
       'new-site',
@@ -76,6 +79,7 @@ export const TASK_TYPES = [
   },
   {
     value: 'apps',
+    icon: 'lucide-package',
     label: 'Apps',
     commands: [
       'install-app',
@@ -89,11 +93,13 @@ export const TASK_TYPES = [
   },
   {
     value: 'backups',
+    icon: 'lucide-archive',
     label: 'Backups',
     commands: ['backup-site', 'delete-backup', 'migration-backup'],
   },
   {
     value: 'updates',
+    icon: 'lucide-git-pull-request-arrow',
     label: 'Updates',
     commands: [
       'update',
@@ -107,11 +113,12 @@ export const TASK_TYPES = [
   },
   {
     value: 'server',
+    icon: 'lucide-server',
     label: 'Server',
     commands: ['setup-nginx', 'setup-letsencrypt', 'restart-services'],
   },
   // Catch-all for commands this table has not learned.
-  { value: 'other', label: 'Other', commands: [] },
+  { value: 'other', icon: 'lucide-ellipsis', label: 'Other', commands: [] },
 ]
 
 const COMMAND_TYPE = Object.fromEntries(
@@ -196,18 +203,6 @@ export const redirectRouteOnSuccess = (task) => {
   return { ...route, query: { app, action: APP_ACTION_FOR_COMMAND[task.command] } }
 }
 
-export const relativeTime = (iso) => {
-  if (!iso) return ''
-  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (seconds < 5) return 'just now'
-  if (seconds < 60) return `${seconds} sec ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} hr ago`
-  return `${Math.floor(hours / 24)} d ago`
-}
-
 /**
  * The one duration format. `precise` keeps a decimal on sub-minute values for
  * step timings, where the difference between 0.4s and 1.2s is worth reading -
@@ -222,9 +217,9 @@ export const fmtDuration = (seconds, { precise = false } = {}) => {
   return `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, '0')}s`
 }
 
-export const fmtDateTime = (iso) => {
-  if (!iso) return '-'
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+export const fmtDateTime = (value) => {
+  if (!value) return '-'
+  return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 /** A queued task has no duration, so its place in the queue takes that slot. */

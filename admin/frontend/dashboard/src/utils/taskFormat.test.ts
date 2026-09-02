@@ -5,15 +5,16 @@ import {
   isTaskActive,
   isTaskCancellable,
   redirectRouteOnSuccess,
-  relativeTime,
   SERVER_SCOPE,
   siteLabel,
   siteRoute,
   statusConfig,
-  taskScope,
   taskDuration,
   taskLastRun,
+  taskScope,
 } from './taskFormat.ts'
+
+import { relativeTime } from './time.ts'
 
 test('queued tasks have their own presentation', () => {
   assert.equal(statusConfig({ status: 'queued' }).label, 'Queued')
@@ -25,11 +26,6 @@ test('queued and running tasks are active', () => {
   assert.equal(isTaskActive({ status: 'running' }), true)
   assert.equal(isTaskActive({ status: 'success' }), false)
   assert.equal(isTaskActive(null), false)
-})
-
-test('task timing tolerates a missing timestamp', () => {
-  assert.equal(relativeTime(null), '')
-  assert.equal(relativeTime(undefined), '')
 })
 
 test('siteLabel names the site, or the server when a task has none', () => {

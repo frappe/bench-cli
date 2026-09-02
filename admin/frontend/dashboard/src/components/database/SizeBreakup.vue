@@ -3,9 +3,11 @@ import { computed } from 'vue'
 
 import UsageMeter from '@/components/common/UsageMeter.vue'
 
-const props = defineProps({
-  size: { type: Object, required: true },
-})
+interface Props {
+  size: Record<string, any>
+}
+
+const props = defineProps<Props>()
 
 const COLORS = { data: 'blue-7', index: 'blue-4', claimable: 'amber-5' }
 

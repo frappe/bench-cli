@@ -26,10 +26,10 @@ defineSlots<{
       <thead class="top-0 z-10 sticky">
         <tr>
           <th
-            v-for="(column, i) in columns"
+            v-for="column in columns"
             :key="column.key"
-            class="bg-surface-gray-2 px-4 py-2 font-normal text-ink-gray-5 text-sm whitespace-nowrap"
-            :class="[column.class, i === 0 && 'rounded-l-4', i === columns.length - 1 && 'rounded-r-4']"
+            class="bg-surface-gray-2 p-2 font-normal text-ink-gray-5 text-sm whitespace-nowrap"
+            :class="column.class"
           >
             {{ column.label }}
           </th>
@@ -41,7 +41,7 @@ defineSlots<{
           <td
             v-for="column in columns"
             :key="column.key"
-            class="px-4 py-3 whitespace-nowrap"
+            class="px-2 h-10 whitespace-nowrap"
             :class="column.class"
           >
             <slot :name="column.key" :row="row" :column="column" :index="index">
@@ -57,5 +57,15 @@ defineSlots<{
 <style scoped>
 tbody tr:not(:last-child) td {
   @apply border-b border-outline-gray-1;
+}
+
+th:first-child,
+td:first-child {
+  @apply rounded-l-4;
+}
+
+th:last-child,
+td:last-child {
+  @apply rounded-r-4;
 }
 </style>

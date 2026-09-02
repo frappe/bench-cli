@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { Button, ErrorMessage, TabButtons, Tooltip } from 'frappe-ui'
+import { ErrorMessage, TabButtons } from 'frappe-ui'
 import { computed, ref } from 'vue'
 
 import PerformanceSchemaNotice from '@/components/database/PerformanceSchemaNotice.vue'
 import ResultTable from '@/components/database/ResultTable.vue'
-import ToggleContent from '@/components/database/ToggleContent.vue'
+import DatabasePanel from '@/components/database/DatabasePanel.vue'
 
 const props = defineProps({
+  badge: { type: String, default: '' },
   report: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
@@ -67,19 +68,13 @@ const activeTab = computed(() => tabs.value.find((entry) => entry.value === tab.
 </script>
 
 <template>
-  <ToggleContent label="Database Index Analysis" sub-label="Analyze the indexes of the database">
-    <template #actions>
-      <Tooltip text="Refresh index analysis">
-        <Button
-          variant="ghost"
-          icon="lucide-refresh-cw"
-          :loading="loading"
-          aria-label="Refresh index analysis"
-          @click="$emit('refresh')"
-        />
-      </Tooltip>
-    </template>
-
+  <DatabasePanel
+    title="Database Index Analysis"
+    subtitle="Analyze the indexes of the database"
+    :badge="badge"
+    :loading="loading"
+    @refresh="$emit('refresh')"
+  >
     <ErrorMessage v-if="error" :message="error" class="m-4" />
     <template v-else>
       <div class="px-4 pb-3">
@@ -95,5 +90,5 @@ const activeTab = computed(() => tabs.value.find((entry) => entry.value === tab.
         is-truncate-text
       />
     </template>
-  </ToggleContent>
+  </DatabasePanel>
 </template>

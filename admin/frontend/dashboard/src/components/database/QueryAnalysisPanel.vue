@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { Button, ErrorMessage, TabButtons, Tooltip } from 'frappe-ui'
+import { ErrorMessage, TabButtons } from 'frappe-ui'
 import { computed, ref } from 'vue'
 
 import PerformanceSchemaNotice from '@/components/database/PerformanceSchemaNotice.vue'
 import ResultTable from '@/components/database/ResultTable.vue'
-import ToggleContent from '@/components/database/ToggleContent.vue'
+import DatabasePanel from '@/components/database/DatabasePanel.vue'
 
 import { formatCount, formatMilliseconds } from '@/utils/format'
 
 const props = defineProps({
+  badge: { type: String, default: '' },
   report: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
@@ -80,22 +81,13 @@ const alignColumns = {
 </script>
 
 <template>
-  <ToggleContent
-    label="SQL Query Analysis"
-    sub-label="Check the concerning queries that might be affecting your database performance"
+  <DatabasePanel
+    title="SQL Query Analysis"
+    subtitle="Check the concerning queries that might be affecting your database performance"
+    :badge="badge"
+    :loading="loading"
+    @refresh="$emit('refresh')"
   >
-    <template #actions>
-      <Tooltip text="Refresh query analysis">
-        <Button
-          variant="ghost"
-          icon="lucide-refresh-cw"
-          :loading="loading"
-          aria-label="Refresh query analysis"
-          @click="$emit('refresh')"
-        />
-      </Tooltip>
-    </template>
-
     <ErrorMessage v-if="error" :message="error" class="m-4" />
     <template v-else>
       <div class="px-4 pb-3">
@@ -114,5 +106,5 @@ const alignColumns = {
         is-truncate-text
       />
     </template>
-  </ToggleContent>
+  </DatabasePanel>
 </template>
