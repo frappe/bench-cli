@@ -166,10 +166,9 @@ export const siteRoute = (task) => {
 }
 
 // What a task ran against, so a detail header reads the same either way.
+// Server-scoped work has no page of its own, so it carries no route.
 export const taskScope = (task) => {
-  const label = siteLabel(task)
-  if (label === SERVER_SCOPE) return { label, route: { name: 'Server' } }
-  return { label, route: siteRoute(task) }
+  return { label: siteLabel(task), route: siteRoute(task) }
 }
 
 const REDIRECT_ON_SUCCESS_COMMANDS = [

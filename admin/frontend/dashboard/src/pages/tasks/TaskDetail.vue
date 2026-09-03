@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { Badge, Button, ErrorMessage, LoadingText } from 'frappe-ui'
 
 import TaskDebugDialog from '@/components/tasks/TaskDebugDialog.vue'
@@ -60,7 +60,7 @@ const loadAiStatus = async () => {
 
 const scope = computed(() => taskScope(task.value))
 const scopeIcon = computed(() =>
-  scope.value.route.name === 'Server' ? 'lucide-server' : 'lucide-globe',
+  scope.value.route ? 'lucide-globe' : 'lucide-server',
 )
 
 const queuePosition = computed(() =>
@@ -154,16 +154,18 @@ onMounted(() => {
     <TaskDebugDialog v-model="showDebug" :task-id="taskId" />
 
     <div class="flex justify-between items-center gap-4 mt-5 px-2 min-w-0">
-      <RouterLink
+      <component
+        :is="scope.route ? RouterLink : 'span'"
         :to="scope.route"
         class="group flex items-center gap-2 min-w-0 text-lg-medium text-ink-gray-9 no-underline"
       >
         <span class="size-4 text-ink-gray-5 shrink-0" :class="scopeIcon" />
         <span class="truncate">{{ scope.label }}</span>
         <span
+          v-if="scope.route"
           class="opacity-0 group-hover:opacity-100 size-4 text-ink-gray-5 transition-opacity shrink-0 lucide-arrow-up-right"
         />
-      </RouterLink>
+      </component>
 
       <div class="flex items-center gap-3 text-sm shrink-0">
         <span v-if="queuePosition" class="flex items-center gap-1.5 ">

@@ -51,8 +51,26 @@ test('taskScope names the server when a task is not bound to a site', () => {
   })
   assert.deepEqual(taskScope({ command: 'build', args: {} }), {
     label: 'Server',
-    route: { name: 'Server' },
+    route: null,
   })
+})
+
+test('taskScope only ever routes to SiteDetail, the one page a scope can have', () => {
+  const commands = ['get-app', 'fetch-all-app-updates', 'update', 'restart-services', 'build']
+  for (const command of commands) {
+    assert.equal(taskScope({ command, args: {} }).route, null, command)
+  }
+  assert.equal(
+    taskScope({ command: 'install-app', args: { site: 'a.local' } }).route.name,
+    'SiteDetail',
+  )
+})
+
+test('taskScope agrees with siteRoute so a scope cannot invent its own route', () => {
+  for (const command of ['get-app', 'migrate', 'new-site', 'build']) {
+    const task = { command, args: { site: 'a.local', name: 'a.local' } }
+    assert.deepEqual(taskScope(task).route, siteRoute(task), command)
+  }
 })
 
 test('site-creating and app tasks redirect to the site page on success', () => {
