@@ -5,7 +5,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Button, Checkbox, Dialog, ErrorMessage, LoadingText, TextInput, Tooltip, toast } from 'frappe-ui'
 
 import SizeBreakup from '@/components/database/SizeBreakup.vue'
-import DatabasePanel from '@/components/database/DatabasePanel.vue'
+import ToggleContent from '@/components/database/ToggleContent.vue'
 import IndexAnalysisPanel from '@/components/database/IndexAnalysisPanel.vue'
 import QueryAnalysisPanel from '@/components/database/QueryAnalysisPanel.vue'
 import Table from '@/components/common/Table.vue'
@@ -465,7 +465,7 @@ onMounted(load)
     <ErrorMessage v-else-if="error" :message="error" />
 
     <template v-else-if="diagnostics">
-      <DatabasePanel
+      <ToggleContent
         title="Database Size Breakup"
         subtitle="Analyze how storage is used"
         :badge="selectedSite ? scopeBadge : 'Server-wide'"
@@ -482,9 +482,9 @@ onMounted(load)
         </p>
 
         <SizeBreakup v-else :size="size" />
-      </DatabasePanel>
+      </ToggleContent>
 
-      <DatabasePanel
+      <ToggleContent
         title="Database Processes"
         subtitle="Analyze the processes of the database"
         :badge="scopeBadge"
@@ -506,9 +506,9 @@ onMounted(load)
         </Table>
 
         <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-      </DatabasePanel>
+      </ToggleContent>
 
-      <DatabasePanel
+      <ToggleContent
         title="Database Locks"
         subtitle="Analyze the lock waits of the database"
         :badge="[scopeBadge, lockColumnsBadge]"
@@ -522,7 +522,7 @@ onMounted(load)
         <Table v-else-if="lockRows.length" class="p-4" :columns="lockColumns" :rows="lockRows" />
 
         <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-      </DatabasePanel>
+      </ToggleContent>
 
       <QueryAnalysisPanel
         :report="performance"
@@ -544,7 +544,7 @@ onMounted(load)
         @refresh="loadPerformance"
       />
 
-      <DatabasePanel
+      <ToggleContent
         v-if="hasBinlogs"
         title="Database Binary Logs"
         subtitle="Manage the binary logs of the database"
@@ -596,7 +596,7 @@ onMounted(load)
             </Button>
           </div>
         </div>
-      </DatabasePanel>
+      </ToggleContent>
     </template>
   </div>
 

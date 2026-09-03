@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 
 import PerformanceSchemaNotice from '@/components/database/PerformanceSchemaNotice.vue'
 import ResultTable from '@/components/database/ResultTable.vue'
-import DatabasePanel from '@/components/database/DatabasePanel.vue'
+import ToggleContent from '@/components/database/ToggleContent.vue'
 
 import { formatCount, formatMilliseconds } from '@/utils/format'
 
@@ -81,7 +81,7 @@ const alignColumns = {
 </script>
 
 <template>
-  <DatabasePanel
+  <ToggleContent
     title="SQL Query Analysis"
     subtitle="Check the concerning queries that might be affecting your database performance"
     :badge="badge"
@@ -106,5 +106,5 @@ const alignColumns = {
         is-truncate-text
       />
     </template>
-  </DatabasePanel>
+  </ToggleContent>
 </template>

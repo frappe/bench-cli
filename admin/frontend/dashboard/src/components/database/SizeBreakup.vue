@@ -9,7 +9,7 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const COLORS = { data: 'red-7', index: 'cyan-7', claimable: 'amber-7', free: 'gray-2' }
+const COLORS = { data: 'blue-7', index: 'blue-4', claimable: 'amber-5', free: 'gray-2' }
 
 // Server scope reports one combined size, and free space is the whole
 // server's disk, which would dwarf every other segment.
@@ -35,6 +35,6 @@ const parts = computed(() => {
 
 <template>
   <div class="p-4">
-    <UsageMeter :parts="parts" />
+    <UsageMeter :parts="parts" bar-height="h-5" />
   </div>
 </template>
