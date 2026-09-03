@@ -470,6 +470,7 @@ onMounted(load)
         subtitle="Analyze how storage is used"
         :badge="selectedSite ? scopeBadge : 'Server-wide'"
         :loading="sizeLoading"
+        :collapsible="false"
         @refresh="loadSize"
       >
         <template v-if="selectedSite" #actions>

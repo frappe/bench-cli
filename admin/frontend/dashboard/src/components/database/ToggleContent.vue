@@ -9,6 +9,7 @@ interface Props {
   loading?: boolean
   showAutoRefresh?: boolean
   autoRefresh?: boolean
+  collapsible?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -17,23 +18,27 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   showAutoRefresh: false,
   autoRefresh: false,
+  collapsible: true,
 })
 
 defineEmits(['refresh', 'update:autoRefresh'])
 
 const badges = computed(() => [props.badge].flat().filter(Boolean))
 
-const isOpen = ref(false)
+const isExpanded = ref(false)
+
+const isOpen = computed(() => !props.collapsible || isExpanded.value)
 </script>
 
 <template>
   <div class="bg-surface-white border rounded-6 border-outline-gray-2">
     <div class="flex justify-between items-start gap-3 p-4">
-      <button
-        type="button"
+      <component
+        :is="collapsible ? 'button' : 'div'"
+        :type="collapsible ? 'button' : undefined"
         class="flex-1 min-w-0 text-left"
-        :aria-expanded="isOpen"
-        @click="isOpen = !isOpen"
+        :aria-expanded="collapsible ? isExpanded : undefined"
+        @click="collapsible && (isExpanded = !isExpanded)"
       >
         <span class="flex flex-wrap items-center gap-2">
           <h3 class="font-semibold text-ink-gray-9 text-base">{{ title }}</h3>
@@ -41,7 +46,7 @@ const isOpen = ref(false)
         </span>
 
         <p v-if="subtitle" class="mt-0.5 text-ink-gray-5 text-sm">{{ subtitle }}</p>
-      </button>
+      </component>
 
       <div v-if="isOpen" class="flex items-center gap-3 shrink-0">
         <slot name="actions" />
@@ -71,7 +76,7 @@ const isOpen = ref(false)
       :class="isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
     >
       <div class="overflow-hidden" :inert="!isOpen">
-        <div class="border-t border-outline-gray-2 overflow-x-auto">
+        <div class="overflow-x-auto">
           <slot />
         </div>
       </div>
