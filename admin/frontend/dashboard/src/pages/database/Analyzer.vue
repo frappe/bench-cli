@@ -2,68 +2,54 @@
 import { useRoute } from 'vue-router'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import {
-  Button,
-  Checkbox,
-  Dialog,
-  ErrorMessage,
-  FormControl,
-  LoadingText,
-  Tooltip,
-  toast,
-} from 'frappe-ui'
-
-import {
-  ListHeader,
-  ListRowItem,
-  ListRows,
-  ListView,
-} from 'frappe-ui/experimental'
+import { Button, Checkbox, Dialog, ErrorMessage, LoadingText, TextInput, Tooltip, toast } from 'frappe-ui'
 
 import SizeBreakup from '@/components/database/SizeBreakup.vue'
 import DatabasePanel from '@/components/database/DatabasePanel.vue'
+import Table from '@/components/common/Table.vue'
 import TableSizesDialog from '@/components/database/TableSizesDialog.vue'
 
 import { databaseApi } from '@/api/database'
 import { formatBytes } from '@/utils/format'
+import { relativeTime } from '@/utils/time'
 import { apiErrorMessage } from '@/api/client'
-import { relativeTime } from '@/utils/taskFormat'
+
 
 const AUTO_REFRESH_INTERVAL_MS = 2000
 
 const processColumns = [
-  { label: '#', key: 'number', align: 'left', width: '2.5rem' },
-  { label: 'ID', key: 'id', align: 'left', width: 1 },
-  { label: 'State', key: 'state', align: 'left', width: 1 },
-  { label: 'Time', key: 'time', align: 'right', width: 1 },
-  { label: 'User', key: 'user', align: 'left', width: 1 },
-  { label: 'Host', key: 'host', align: 'left', width: 1.5 },
-  { label: 'Command', key: 'command', align: 'left', width: 1 },
-  { label: 'Query', key: 'query', align: 'left', width: 3 },
-  { label: '', key: 'actions', align: 'right', width: '5rem' },
+  { label: '#', key: 'number', class: 'w-10' },
+  { label: 'ID', key: 'id', class: 'w-[10%]' },
+  { label: 'State', key: 'state', class: 'w-[10%]' },
+  { label: 'Time', key: 'time', class: 'w-[10%] text-right' },
+  { label: 'User', key: 'user', class: 'w-[10%]' },
+  { label: 'Host', key: 'host', class: 'w-[24%]' },
+  { label: 'Command', key: 'command', class: 'w-[10%]' },
+  { label: 'Query', key: 'query', class: 'w-[12%]' },
+  { label: '', key: 'actions', class: 'w-20 text-right' },
 ]
 
 const lockColumns = [
-  { label: '#', key: 'number', align: 'left', width: '2rem' },
-  { label: 'ID', key: 'id', align: 'left', width: 0.8 },
-  { label: 'Type', key: 'type', align: 'left', width: 0.8 },
-  { label: 'Mode', key: 'mode', align: 'left', width: 0.8 },
-  { label: 'Table', key: 'table', align: 'left', width: 1.2 },
-  { label: 'Index', key: 'index', align: 'left', width: 0.8 },
-  { label: 'State', key: 'state', align: 'left', width: 0.8 },
-  { label: 'Started', key: 'started', align: 'left', width: 1.2 },
-  { label: 'Query', key: 'query', align: 'left', width: 1.5 },
-  { label: 'Rows Locked', key: 'rowsLocked', align: 'right', width: 0.9 },
-  { label: 'Rows Modified', key: 'rowsModified', align: 'right', width: 1 },
+  { label: '#', key: 'number', class: 'w-10' },
+  { label: 'ID', key: 'id', class: 'w-[8%]' },
+  { label: 'Type', key: 'type', class: 'w-[8%]' },
+  { label: 'Mode', key: 'mode', class: 'w-[8%]' },
+  { label: 'Table', key: 'table', class: 'w-[12%]' },
+  { label: 'Index', key: 'index', class: 'w-[8%]' },
+  { label: 'State', key: 'state', class: 'w-[8%]' },
+  { label: 'Started', key: 'started', class: 'w-[12%]' },
+  { label: 'Query', key: 'query', class: 'w-[15%]' },
+  { label: 'Rows Locked', key: 'rowsLocked', class: 'w-[9%] text-right' },
+  { label: 'Rows Modified', key: 'rowsModified', class: 'w-[10%] text-right' },
 ]
 
 const binlogColumns = [
-  { label: '#', key: 'number', align: 'left', width: '2rem' },
-  { label: '', key: 'selected', align: 'left', width: '2rem' },
-  { label: 'File', key: 'name', align: 'left', width: 2 },
-  { label: 'Date', key: 'date', align: 'left', width: 1.5 },
-  { label: 'Size', key: 'size', align: 'right', width: 1 },
-  { label: '', key: 'actions', align: 'right', width: '3rem' },
+  { label: '#', key: 'number', class: 'w-10' },
+  { label: '', key: 'selected', class: 'w-10' },
+  { label: 'File', key: 'name', class: 'w-[44%]' },
+  { label: 'Date', key: 'date', class: 'w-[33%]' },
+  { label: 'Size', key: 'size', class: 'w-[23%] text-right' },
+  { label: '', key: 'actions', class: 'w-12 text-right' },
 ]
 
 const route = useRoute()
@@ -143,7 +129,7 @@ const binlogRows = computed(() =>
   binlogs.value.map((file, index) => ({
     number: index + 1,
     name: file.name,
-    date: fileAge(file),
+    date: relativeTime(file.modified_ms),
     size: formatBytes(file.size_bytes),
     index,
     isActive: index === binlogs.value.length - 1,
@@ -201,7 +187,7 @@ const siteOptions = computed(() => [
 
 const scopeBadge = computed(() => selectedSite.value)
 
-const MAX_QUERY_LENGTH = 120
+const MAX_QUERY_LENGTH = 30
 
 // Long queries can be arbitrarily large single-line strings that would
 // otherwise force the table wider than the page.
@@ -212,10 +198,6 @@ const truncateQuery = (query) => {
 
 const formatSeconds = (seconds) => {
   return seconds == null ? '—' : `${Math.round(seconds)}s`
-}
-
-const fileAge = (file) => {
-  return file.modified_ms ? relativeTime(new Date(file.modified_ms).toISOString()) : '—'
 }
 
 // Purging is contiguous from the oldest file, so ticking one file ticks every
@@ -427,7 +409,7 @@ onMounted(load)
 
 <template>
   <Teleport defer to="#header-actions">
-    <FormControl
+    <TextInput
       v-if="siteOptions.length > 1"
       type="select"
       v-model="selectedSite"
@@ -436,10 +418,8 @@ onMounted(load)
     />
   </Teleport>
 
-  <div class="flex flex-col gap-4">
-    <div v-if="loading && !diagnostics" class="flex justify-center py-16">
-      <LoadingText />
-    </div>
+  <div class="p-3 md:p-4 flex flex-col gap-4">
+    <LoadingText v-if="loading && !diagnostics" class="justify-center py-16" />
 
     <div
       v-else-if="diagnostics && !diagnostics.supported"
@@ -447,7 +427,7 @@ onMounted(load)
     >
       <span class="size-6 text-ink-gray-3 lucide-database" />
       <p class="font-medium text-ink-gray-7 text-sm">No database server</p>
-      <p class="max-w-sm text-ink-gray-5 text-xs">{{ diagnostics.reason }}</p>
+      <p class="max-w-sm text-ink-gray-5 text-p-xs">{{ diagnostics.reason }}</p>
     </div>
 
     <ErrorMessage v-else-if="error" :message="error" />
@@ -461,7 +441,7 @@ onMounted(load)
         @refresh="loadSize"
       >
         <template v-if="selectedSite" #actions>
-          <Button variant="subtle" size="sm" @click="showTableSizes = true">View Details</Button>
+          <Button @click="showTableSizes = true">View Details</Button>
         </template>
 
         <ErrorMessage v-if="sizeError" :message="sizeError" class="m-4" />
@@ -480,34 +460,20 @@ onMounted(load)
         @refresh="loadProcesses"
       >
         <ErrorMessage v-if="processesError" :message="processesError" class="m-4" />
-        <ListView
-          v-else
-          class="p-4 !w-full"
+        <Table
+          v-else-if="processRows.length"
+          class="p-4"
           :columns="processColumns"
           :rows="processRows"
-          row-key="number"
-          :options="{ selectable: false, showTooltip: false }"
         >
-          <template #cell="{ column, row, item }">
-            <div v-if="column.key === 'actions'" class="flex justify-end">
-              <Button
-                variant="ghost"
-                theme="red"
-                size="sm"
-                iconLeft="lucide-x"
-                @click="confirmKill(row.process)"
-              >
-                Kill
-              </Button>
-            </div>
-
-            <ListRowItem v-else :column="column" :row="row" :item="item" :align="column.align" />
+          <template #actions="{ row }">
+            <Button variant="ghost" theme="red" iconLeft="lucide-x" @click="confirmKill(row.process)">
+              Kill
+            </Button>
           </template>
+        </Table>
 
-          <ListHeader />
-          <ListRows v-if="processRows.length" />
-          <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-        </ListView>
+        <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
       </DatabasePanel>
 
       <DatabasePanel
@@ -521,22 +487,9 @@ onMounted(load)
         @refresh="loadLockWaits"
       >
         <ErrorMessage v-if="lockWaitsError" :message="lockWaitsError" class="m-4" />
-        <ListView
-          v-else
-          class="p-4 !w-full"
-          :columns="lockColumns"
-          :rows="lockRows"
-          row-key="number"
-          :options="{ selectable: false, showTooltip: false }"
-        >
-          <template #cell="{ column, row, item }">
-            <ListRowItem :column="column" :row="row" :item="item" :align="column.align" />
-          </template>
+        <Table v-else-if="lockRows.length" class="p-4" :columns="lockColumns" :rows="lockRows" />
 
-          <ListHeader />
-          <ListRows v-if="lockRows.length" />
-          <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-        </ListView>
+        <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
       </DatabasePanel>
 
       <DatabasePanel
@@ -549,43 +502,32 @@ onMounted(load)
       >
         <ErrorMessage v-if="binlogsError" :message="binlogsError" class="m-4" />
         <div v-else class="p-4">
-          <ListView
-            class="!w-full"
-            :columns="binlogColumns"
-            :rows="binlogRows"
-            row-key="number"
-            :options="{ selectable: false, showTooltip: false }"
-          >
-            <template #cell="{ column, row, item }">
+          <Table v-if="binlogRows.length" :columns="binlogColumns" :rows="binlogRows">
+            <template #selected="{ row }">
               <Checkbox
-                v-if="column.key === 'selected'"
                 :modelValue="row.index <= selectedIndex"
                 :disabled="row.isActive"
                 @update:modelValue="toggle(row.index, $event)"
               />
-              <div v-else-if="column.key === 'actions'" class="flex justify-end">
-                <Tooltip v-if="!row.isActive" text="Delete this file and every older one">
-                  <Button
-                    variant="ghost"
-                    theme="red"
-                    size="sm"
-                    icon="lucide-trash-2"
-                    label="Delete binary logs"
-                    @click="confirmPurge(row.index)"
-                  />
-                </Tooltip>
-              </div>
-
-              <ListRowItem v-else :column="column" :row="row" :item="item" :align="column.align" />
             </template>
 
-            <ListHeader />
-            <ListRows v-if="binlogRows.length" />
-            <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-          </ListView>
+            <template #actions="{ row }">
+              <Tooltip v-if="!row.isActive" text="Delete this file and every older one">
+                <Button
+                  variant="ghost"
+                  theme="red"
+                  icon="lucide-trash-2"
+                  label="Delete binary logs"
+                  @click="confirmPurge(row.index)"
+                />
+              </Tooltip>
+            </template>
+          </Table>
+
+          <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
 
           <div v-if="binlogs.length" class="flex flex-wrap justify-between items-center gap-2 mt-3">
-            <p class="text-ink-gray-5 text-xs">
+            <p class="text-ink-gray-5 text-p-xs">
               The newest log is in use and cannot be deleted. Selecting a file also selects every
               older one, because the server can only purge them together.
             </p>
@@ -609,12 +551,12 @@ onMounted(load)
   <TableSizesDialog v-model:open="showTableSizes" :site="selectedSite" />
 
   <Dialog v-model="showKillDialog" title="Kill database process" size="sm">
-    <p class="text-ink-gray-7 text-sm">
+    <p class="text-ink-gray-7 text-sm leading-relaxed">
       Close connection <strong>{{ killTarget?.id }}</strong> and roll back whatever it is running?
       Any bench sharing this server may own it.
     </p>
 
-    <dl class="space-y-1.5 bg-surface-gray-1 mt-3 p-3 rounded-6 text-xs">
+    <dl class="flex flex-col gap-2 mt-4 text-sm">
       <div
         v-for="item in killDetails"
         :key="item.label"
@@ -623,20 +565,23 @@ onMounted(load)
         <dt class="text-ink-gray-5 shrink-0">{{ item.label }}</dt>
         <dd class="font-medium text-ink-gray-8 truncate">{{ item.value }}</dd>
       </div>
-
-      <div v-if="killQuery" class="space-y-1.5 pt-1.5 border-t border-outline-gray-2">
-        <dt class="text-ink-gray-5">Query</dt>
-        <dd class="max-h-24 overflow-y-auto font-mono font-medium text-ink-gray-8 break-all">
-          {{ killQuery }}
-        </dd>
-      </div>
     </dl>
 
-    <ErrorMessage v-if="killError" :message="killError" class="mt-3" />
-    <div class="flex justify-end gap-2 mt-4">
-      <Button variant="ghost" @click="showKillDialog = false">Cancel</Button>
-      <Button variant="solid" theme="red" :loading="killing" @click="kill">Kill process</Button>
-    </div>
+    <p v-if="killQuery" class="mt-4 mb-1.5 text-ink-gray-5 text-sm">Query</p>
+
+    <pre
+      v-if="killQuery"
+      class="bg-surface-gray-2 p-3 rounded-4 max-h-40 overflow-auto font-mono text-ink-gray-8 text-sm leading-relaxed whitespace-pre-wrap break-words"
+    >{{ killQuery }}</pre>
+
+    <ErrorMessage v-if="killError" :message="killError" class="mt-4" />
+
+    <template #actions>
+      <div class="flex justify-end gap-2">
+        <Button @click="showKillDialog = false">Cancel</Button>
+        <Button variant="solid" theme="red" :loading="killing" @click="kill">Kill process</Button>
+      </div>
+    </template>
   </Dialog>
 
   <Dialog v-model="showPurgeDialog" title="Delete binary logs" size="sm">
@@ -661,10 +606,12 @@ onMounted(load)
     </dl>
 
     <ErrorMessage v-if="purgeError" :message="purgeError" class="mt-3" />
-    <div class="flex justify-end gap-2 mt-4">
-      <Button variant="ghost" @click="showPurgeDialog = false">Cancel</Button>
-      <Button variant="solid" theme="red" :loading="purging" @click="purge">Delete</Button>
-    </div>
+    <template #actions>
+      <div class="flex justify-end gap-2">
+        <Button variant="ghost" @click="showPurgeDialog = false">Cancel</Button>
+        <Button variant="solid" theme="red" :loading="purging" @click="purge">Delete</Button>
+      </div>
+    </template>
   </Dialog>
 </template>
 
