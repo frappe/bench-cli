@@ -11,7 +11,6 @@ import { apiErrorMessage } from '@/api/client'
 import { tasksApi } from '@/api/tasks'
 import { settingsApi } from '@/api/settings'
 import { useBreadcrumbs } from '@/composables/common/useBreadcrumbs'
-import { useIsMobile } from '@/composables/common/useIsMobile'
 import { useTaskDetail } from '@/composables/tasks/useTaskDetail'
 
 import {
@@ -29,7 +28,6 @@ const route = useRoute()
 const router = useRouter()
 const taskId = route.params.taskId
 
-const isMobile = useIsMobile()
 const { setBreadcrumbs } = useBreadcrumbs()
 const { task, rawLines, loading, error, load } = useTaskDetail(taskId)
 
@@ -123,8 +121,8 @@ onMounted(() => {
       />
     </Teleport>
 
-    <Teleport defer to="#header-actions" :disabled="isMobile">
-      <div class="flex items-center gap-2" :class="isMobile ? 'mb-4' : ''">
+    <Teleport defer to="#header-actions">
+      <div class="flex items-center gap-2">
         <Button
           :loading="loading"
           icon="lucide-refresh-cw"
