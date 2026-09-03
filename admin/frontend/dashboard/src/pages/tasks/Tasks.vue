@@ -170,9 +170,7 @@ onMounted(() => load(statusFilter.value))
 
     <Table v-else-if="rows.length" :columns="columns" :rows="rows">
       <template #title="{ row }">
-        <router-link :to="getRowRoute(row)" class="hover:underline underline-offset-4"
-          >{{ row.title }}</router-link
-        >
+        <router-link :to="getRowRoute(row)">{{ row.title }}</router-link>
       </template>
 
       <template #timing="{ row }">
