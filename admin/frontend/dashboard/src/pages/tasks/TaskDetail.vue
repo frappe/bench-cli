@@ -154,9 +154,8 @@ onMounted(() => {
     <TaskDebugDialog v-model="showDebug" :task-id="taskId" />
 
     <div class="flex justify-between items-center gap-4 mt-5 px-2 min-w-0">
-      <component
-        :is="scope.route ? RouterLink : 'span'"
-        :to="scope.route"
+      <RouterLink
+        :to="scope.route || ''"
         class="group flex items-center gap-2 min-w-0 text-lg-medium text-ink-gray-9 no-underline"
       >
         <span class="size-4 text-ink-gray-5 shrink-0" :class="scopeIcon" />
@@ -165,7 +164,7 @@ onMounted(() => {
           v-if="scope.route"
           class="opacity-0 group-hover:opacity-100 size-4 text-ink-gray-5 transition-opacity shrink-0 lucide-arrow-up-right"
         />
-      </component>
+      </RouterLink>
 
       <div class="flex items-center gap-3 text-sm shrink-0">
         <span v-if="queuePosition" class="flex items-center gap-1.5 ">
