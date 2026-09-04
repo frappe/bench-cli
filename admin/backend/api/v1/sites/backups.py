@@ -17,10 +17,12 @@ from admin.backend.api.v1.sites.shared import (
 )
 from admin.backend.middleware import require_scope
 from pilot.core.bench import Bench
+from pilot.core.site.backup_uploads import BackupUploads
 from pilot.exceptions import BenchError
 from pilot.internal.site_paths import site_exists
 from pilot.internal.validators import validate_cron_expression
 from pilot.tasks.backup_site import BackupSiteTask
+from pilot.tasks.restore_site import RestoreSiteTask
 
 _DEFAULT_BACKUPS_PAGE_SIZE = 20
 
@@ -83,6 +85,65 @@ def _backup_set_resource(s) -> dict:
             for f in s.files
         ],
     }
+
+
+@sites_bp.post("/backup-uploads")
+def upload_backup():
+    """Stage uploaded backup archives for a restore: a database dump (required)
+    plus optional public and private file archives, as multipart fields named
+    database, public_files, and private_files."""
+    bench_root = Path(current_app.config["BENCH_ROOT"])
+    parts = {
+        kind: (part.filename, part.stream)
+        for kind in ("database", "public_files", "private_files")
+        if (part := request.files.get(kind)) is not None and part.filename
+    }
+    if "database" not in parts:
+        return error_response("backup_file_missing", "A database backup file is required.", 422)
+    try:
+        upload = BackupUploads(bench_root).save(parts)
+    except BenchError as error:
+        return error_response("invalid_backup_file", str(error), 422)
+    except Exception:
+        return internal_error("Could not store the uploaded backup.")
+    return jsonify({"upload_id": upload.upload_id, "files": sorted(upload.files)}), 201
+
+
+@sites_bp.post("/<name>/actions/restore")
+@require_scope(site_name)
+def restore_site(name: str):
+    """Restore an uploaded backup into `name` in place, replacing its data."""
+    bench_root = Path(current_app.config["BENCH_ROOT"])
+    if not site_exists(bench_root, name):
+        return site_not_found()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return malformed_body()
+    fields = text_fields(data, "upload_id")
+    if fields is None:
+        return invalid_fields()
+    uploads = BackupUploads(bench_root)
+    try:
+        upload = uploads.claim(fields["upload_id"], retry_key=request.headers.get("Idempotency-Key"))
+    except BenchError as error:
+        return error_response("backup_upload_not_found", str(error), 404)
+    try:
+        task_id = RestoreSiteTask.queue(
+            Bench(bench_root),
+            site=name,
+            db_file=upload.db_file,
+            public_files=upload.files.get("public_files"),
+            private_files=upload.files.get("private_files"),
+            upload_id=upload.upload_id,
+            upload_claim=upload.claim,
+            idempotency_key=request.headers.get("Idempotency-Key"),
+            resource_key=f"site:{name.lower()}",
+        )
+    except Exception as error:
+        uploads.release(upload.upload_id, upload.claim)
+        return task_failure(error)
+    uploads.mark_queued(upload.upload_id, upload.claim)
+    return accepted_task_response(bench_root, task_id)
 
 
 @sites_bp.get("/<name>/backups/<timestamp>/files/<file_id>/content")

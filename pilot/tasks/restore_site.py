@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
-from pilot.core.site import provision_from_backup
 from pilot.core.site.backup_uploads import BackupUploads
-from pilot.tasks import Arg, Task, step
+from pilot.tasks import Task, step
 
 
 @dataclass(kw_only=True)
-class NewSiteFromBackupTask(Task):
-    command: ClassVar[str] = "new-site-from-backup"
+class RestoreSiteTask(Task):
+    """Restore a backup into an existing site in place via Site.restore."""
 
-    name: str
+    command: ClassVar[str] = "restore-site"
+    # The database is dropped and recreated mid-run; a kill leaves it half-loaded.
+    is_cancellable_while_running: ClassVar[bool] = False
+
+    site: str
     db_file: str
-    admin_password: Annotated[str, Arg(cli=False)]
     public_files: str | None = None
     private_files: str | None = None
     # The staged upload these archives came from; removed once the restore
@@ -30,18 +32,10 @@ class NewSiteFromBackupTask(Task):
                 self.upload_id, archive=self.db_file, claim=self.upload_claim
             )
 
-    @step("restore", lambda self: f"Restore site {self.name} from backup")
+    @step("restore", lambda self: f"Restore backup into {self.site}")
     def restore(self) -> None:
-        provision_from_backup(
-            self.bench,
-            self.name,
-            self.db_file,
-            admin_password=self.admin_password,
-            public_files=self.public_files,
-            private_files=self.private_files,
-            on_progress=self.report,
-        )
+        self.bench.site(self.site).restore(self.db_file, self.public_files, self.private_files)
 
 
 if __name__ == "__main__":
-    NewSiteFromBackupTask.main()
+    RestoreSiteTask.main()

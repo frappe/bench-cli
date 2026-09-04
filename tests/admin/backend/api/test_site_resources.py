@@ -105,3 +105,42 @@ def test_site_creation_rejects_symlinked_sites_root(tmp_path: Path) -> None:
 
     assert create.status_code == 422
     queue.assert_not_called()
+
+
+def test_create_site_from_an_uploaded_backup_queues_a_restore(tmp_path: Path) -> None:
+    import io
+
+    bench_root = tmp_path / "benches" / "current"
+    client = _client(bench_root)
+    upload = client.post(
+        "/api/v1/sites/backup-uploads",
+        data={"database": (io.BytesIO(b"dump"), "database.sql.gz")},
+        content_type="multipart/form-data",
+    ).get_json()
+
+    with patch("pilot.internal.tasks.runner.task_workers.wake", return_value=False):
+        response = client.post(
+            "/api/v1/sites",
+            json={"name": "restored.localhost", "apps": ["erpnext"], "restore_upload_id": upload["upload_id"]},
+        )
+
+    body = response.get_json()
+    assert response.status_code == 202
+    assert body["command"] == "new-site-from-backup"
+    assert body["args"]["name"] == "restored.localhost"
+    meta = json.loads((bench_root / "tasks" / body["task_id"] / "meta.json").read_text())
+    assert str(bench_root / "backups-uploads" / upload["upload_id"] / "database.sql.gz") in meta["command_argv"]
+
+
+def test_create_site_with_an_unknown_upload_is_rejected_before_any_task(tmp_path: Path) -> None:
+    client = _client(tmp_path / "benches" / "current")
+
+    with patch("admin.backend.api.v1.sites.core.NewSiteFromBackupTask.queue") as queue:
+        response = client.post(
+            "/api/v1/sites",
+            json={"name": "restored.localhost", "restore_upload_id": "0123456789abcdef"},
+        )
+
+    assert response.status_code == 404
+    assert response.get_json()["error"]["code"] == "backup_upload_not_found"
+    queue.assert_not_called()

@@ -84,6 +84,12 @@ Measuring means a `du` per site directory and one schema-size query, so the rout
 
 `POST /sites/<name>/actions/refresh-storage` queues `refresh-storage-usage` to measure again on demand. One report covers every site on the bench, so the task re-measures all of them and concurrent requests fold into one run.
 
+### Backup Uploads And Restore
+
+`POST /sites/backup-uploads` takes a multipart upload - `database` (`.sql.gz` or `.sql`, required) plus optional `public_files` and `private_files` archives (`.tar`, `.tar.gz`, `.tgz`) - stages them privately under `backups-uploads/<id>`, and returns `{"upload_id": ..., "files": [...]}`. It needs a bench session. Uploads are bounded by nginx's `client_max_body_size` (50m by default) in production.
+
+`POST /sites` with `restore_upload_id` creates the site from that upload via `new-site-from-backup`; the apps come from the dump, so `apps` is ignored. `POST /sites/<name>/actions/restore` with `upload_id` queues `restore-site`, which restores the upload into the existing site in place. Queueing claims the upload for that one restore - a second restore against the same id is refused - and the task deletes the upload after a successful restore, keeping it on failure so a retry still has its inputs. Tasks identify the upload by id and carry its claim, so cleanup can only ever remove a directory under `backups-uploads`, and only the restore holding the claim can remove a claimed upload.
+
 ### Setup
 
 Every `/setup/*` route needs a session, like the rest of the API. The Admin password is set when the bench is created (`pilot new`), so there is no unauthenticated window: a browser reaches the wizard through the `?sid=` link that `pilot start` prints, or by signing in with that password. `POST /benches` returns a `setup_link` token for the same purpose.

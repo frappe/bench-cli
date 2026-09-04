@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { computed, onMounted, ref } from 'vue'
-import { Badge, Button, Dialog, Dropdown, ErrorMessage, Select } from 'frappe-ui'
+import { Badge, Button, Dialog, Dropdown, ErrorMessage, Select, TextInput } from 'frappe-ui'
 
 import EmptyState from '@/components/common/EmptyState.vue'
 import ListSkeleton from '@/components/common/ListSkeleton.vue'
 import Table from '@/components/common/Table.vue'
 import BackupConfigDialog from '@/components/sites/BackupConfigDialog.vue'
+import BackupFilesPicker from '@/components/sites/BackupFilesPicker.vue'
 
 import { sitesApi } from '@/api/sites'
 import { tasksApi } from '@/api/tasks'
 import { cronToLabel } from '@/utils/backup'
+import { uploadBackupFiles, validateBackupFiles } from '@/utils/backupUpload'
 import { apiErrorMessage } from '@/api/client'
 import { fmtDateTime } from '@/utils/taskFormat'
 import { useSite } from '@/composables/sites/useSite'
@@ -156,6 +158,45 @@ const downloadFile = async (set, kind) => {
   }
 }
 
+// Restore an uploaded backup into this site, replacing its data.
+const showRestore = ref(false)
+const restoring = ref(false)
+const uploading = ref(false)
+const restoreError = ref('')
+const restoreFiles = ref({ database: null, public_files: null, private_files: null })
+const restoreConfirmName = ref('')
+
+const openRestore = () => {
+  restoreFiles.value = { database: null, public_files: null, private_files: null }
+  restoreConfirmName.value = ''
+  restoreError.value = ''
+  showRestore.value = true
+}
+
+const confirmRestore = async () => {
+  restoreError.value = validateBackupFiles(restoreFiles.value) || ''
+  if (restoreError.value) return
+  restoring.value = true
+  try {
+    uploading.value = true
+    let uploadId: string
+    try {
+      uploadId = await uploadBackupFiles(restoreFiles.value)
+    } finally {
+      uploading.value = false
+    }
+    const data = await sitesApi.restore(props.siteName, uploadId)
+    if (data.task_id) {
+      showRestore.value = false
+      openTaskDetailPage(router, data.task_id)
+    } else restoreError.value = apiErrorMessage(data, 'Restore failed.')
+  } catch (e) {
+    restoreError.value = e.message || 'Restore failed.'
+  } finally {
+    restoring.value = false
+  }
+}
+
 const showDelete = ref(false)
 const deleteTarget = ref(null)
 const deleting = ref(false)
@@ -192,6 +233,10 @@ onMounted(() => {
     </div>
 
     <div class="flex items-center gap-2 shrink-0">
+      <Button @click="openRestore">
+        <template #prefix><span class="size-4 lucide-archive-restore" /></template>
+        Restore
+      </Button>
       <Button @click="configRef.open()">
         {{ enabled ? 'Configure' : 'Enable' }}
       </Button>
@@ -264,6 +309,37 @@ onMounted(() => {
       <Button v-if="backupsHasMore" class="ml-auto" @click="loadMoreBackups">Load more</Button>
     </div>
   </template>
+
+  <Dialog v-model="showRestore" title="Restore Backup" size="md">
+    <div class="space-y-4">
+      <p class="text-ink-gray-7 text-sm">
+        Upload a backup and restore it into <strong>{{ siteName }}</strong>. Every current
+        record and file on the site is replaced by the backup's - this can't be undone.
+      </p>
+
+      <BackupFilesPicker v-model="restoreFiles" />
+
+      <TextInput v-model="restoreConfirmName" :placeholder="siteName" class="w-full">
+        <template #label>
+          <span class="text-sm break-all">Type {{ siteName }} to confirm</span>
+        </template>
+      </TextInput>
+
+      <ErrorMessage v-if="restoreError" :message="restoreError" />
+      <div class="flex justify-end gap-2">
+        <Button variant="ghost" @click="showRestore = false">Cancel</Button>
+        <Button
+          variant="solid"
+          theme="red"
+          :loading="restoring"
+          :disabled="restoreConfirmName !== siteName || !restoreFiles.database"
+          @click="confirmRestore"
+        >
+          {{ uploading ? 'Uploading…' : 'Restore backup' }}
+        </Button>
+      </div>
+    </div>
+  </Dialog>
 
   <Dialog v-model="showDelete" title="Delete Backup" size="sm">
     <p class="text-ink-gray-7 text-sm">

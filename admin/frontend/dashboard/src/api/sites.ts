@@ -11,6 +11,13 @@ export const sitesApi = {
     request.post(`sites/${encodeURIComponent(name)}/actions/refresh-storage`).json(),
   detail: (name) => request.get(`sites/${encodeURIComponent(name)}`).json(),
   create: (payload) => request.post('sites', { json: payload }).json(),
+  // Multipart; no timeout - a backup upload can legitimately take minutes.
+  uploadBackup: (formData) =>
+    request.post('sites/backup-uploads', { body: formData, timeout: false }).json(),
+  restore: (name, uploadId) =>
+    request
+      .post(`sites/${encodeURIComponent(name)}/actions/restore`, { json: { upload_id: uploadId } })
+      .json(),
   loginLink: (name) => request.post(`sites/${encodeURIComponent(name)}/login`).json(),
   configuration: {
     get: (name) => unwrap(request.get(`sites/${encodeURIComponent(name)}/configuration`).json()),

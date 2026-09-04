@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue'
-import { Button, Checkbox, Dialog, ErrorMessage, Select, Spinner, TextInput } from 'frappe-ui'
+import { Button, Checkbox, Dialog, ErrorMessage, Select, Spinner, TabButtons, TextInput } from 'frappe-ui'
 
 import AppIcon from '@/components/apps/AppIcon.vue'
+import BackupFilesPicker from '@/components/sites/BackupFilesPicker.vue'
 
 import { apiErrorMessage } from '@/api/client'
 import { appsApi } from '@/api/apps'
 import { sitesApi } from '@/api/sites'
 import { useAppRegistry } from '@/composables/apps/useAppRegistry'
+import { uploadBackupFiles, validateBackupFiles } from '@/utils/backupUpload'
 import { buildSiteAppChoices } from '@/utils/siteApps'
 
 interface Props {
@@ -33,6 +35,20 @@ const creating = ref(false)
 const error = ref('')
 
 const selectedApps = ref([])
+
+// 'blank' installs the chosen apps; 'restore' creates the site from an
+// uploaded backup, which brings its own apps.
+const SOURCES = [
+  { label: 'Blank site', value: 'blank' },
+  { label: 'Restore from backup', value: 'restore' },
+]
+const source = ref('blank')
+const backupFiles = ref({ database: null, public_files: null, private_files: null })
+const uploading = ref(false)
+const isRestore = computed(() => source.value === 'restore')
+const canSubmit = computed(
+  () => Boolean(newSiteName.value) && (!isRestore.value || Boolean(backupFiles.value.database)),
+)
 
 const hasSingleDomain = computed(() => wildcardDomains.value.length === 1)
 
@@ -73,6 +89,8 @@ const reset = async () => {
   sitePrefix.value = ''
   error.value = ''
   selectedApps.value = []
+  source.value = 'blank'
+  backupFiles.value = { database: null, public_files: null, private_files: null }
   loading.value = true
   await Promise.all([loadWildcardDomains(), loadRegistry(), loadBenchApps()])
   loading.value = false
@@ -117,12 +135,30 @@ const submit = async () => {
     return
   }
 
+  if (isRestore.value) {
+    const filesError = validateBackupFiles(backupFiles.value)
+    if (filesError) {
+      error.value = filesError
+      return
+    }
+  }
+
   creating.value = true
   error.value = ''
   try {
+    let restoreUploadId: string | undefined
+    if (isRestore.value) {
+      uploading.value = true
+      try {
+        restoreUploadId = await uploadBackupFiles(backupFiles.value)
+      } finally {
+        uploading.value = false
+      }
+    }
     const result = await sitesApi.create({
       name,
-      apps: selectedApps.value,
+      apps: isRestore.value ? [] : selectedApps.value,
+      ...(restoreUploadId ? { restore_upload_id: restoreUploadId } : {}),
     })
     if (result.task_id) {
       open.value = false
@@ -188,8 +224,20 @@ const submit = async () => {
         </p>
       </div>
 
+      <!-- Blank or restored -->
+      <TabButtons v-model="source" :options="SOURCES" size="sm" />
+
+      <!-- Restore from backup -->
+      <div v-if="isRestore" class="space-y-2">
+        <BackupFilesPicker v-model="backupFiles" />
+        <p class="flex items-start gap-1.5 text-ink-gray-5 text-p-sm">
+          <span class="mt-0.5 size-3.5 lucide-info shrink-0"></span>
+          The apps come from the backup; they must already be on this bench.
+        </p>
+      </div>
+
       <!-- Choose apps -->
-      <div v-if="availableApps.length">
+      <div v-if="!isRestore && availableApps.length">
         <div class="flex justify-between items-center mb-2">
           <span class="text-ink-gray-7 text-p-sm-medium">Choose apps</span>
           <span class="text-ink-gray-5 text-xs"> {{ selectedApps.length }} selected </span>
@@ -235,9 +283,9 @@ const submit = async () => {
 
       <div class="flex justify-end gap-2">
         <Button @click="open = false">Cancel</Button>
-        <Button variant="solid" :loading="creating" @click="submit" :disabled="!newSiteName"
-          >Create Site</Button
-        >
+        <Button variant="solid" :loading="creating" @click="submit" :disabled="!canSubmit">
+          {{ uploading ? 'Uploading backup…' : isRestore ? 'Restore Site' : 'Create Site' }}
+        </Button>
       </div>
     </div>
   </Dialog>

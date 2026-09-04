@@ -630,3 +630,23 @@ def test_task_retention_limit(tmp_path: Path) -> None:
         and (entry / "status").read_text().strip() in {"success", "failed", "killed"}
     ]
     assert len(remaining_completed) == TASK_RETENTION_LIMIT
+
+
+def test_command_argv_restore_site_carries_archives_and_staging(tmp_path: Path) -> None:
+    argv = task_argv(
+        tmp_path,
+        "restore-site",
+        {
+            "site": "mysite.localhost",
+            "db_file": "/uploads/x/database.sql.gz",
+            "public_files": "/uploads/x/files.tar",
+            "upload_id": "0123456789abcdef",
+        },
+    )
+
+    assert argv[1:3] == ["-m", "pilot.tasks.restore_site"]
+    assert "mysite.localhost" in argv
+    assert "/uploads/x/database.sql.gz" in argv
+    assert "/uploads/x/files.tar" in argv
+    assert "0123456789abcdef" in argv
+    assert "--private-files" not in argv
