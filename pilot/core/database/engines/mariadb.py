@@ -11,7 +11,7 @@ from pilot.core.database.base import (
     DatabaseSize,
     LockWaitRow,
     LockWaitStatus,
-    PerformanceReport,
+    PerformanceSection,
     QueryResult,
     StorageComponent,
     TableSize,
@@ -298,8 +298,34 @@ class MariaDB(Database):
             for row in rows
         ]
 
-    def get_performance_report(self, database: str = "") -> PerformanceReport:
-        return MariaDBPerformanceReport(self._connect, database).build()
+    def get_time_consuming_queries(
+        self, database: str = "", limit: int = 20, offset: int = 0
+    ) -> PerformanceSection:
+        return MariaDBPerformanceReport(self._connect, database).get_time_consuming_queries(limit, offset)
+
+    def get_full_table_scan_queries(
+        self, database: str = "", limit: int = 20, offset: int = 0
+    ) -> PerformanceSection:
+        return MariaDBPerformanceReport(self._connect, database).get_full_table_scan_queries(limit, offset)
+
+    def get_unused_indexes(
+        self, database: str = "", limit: int = 20, offset: int = 0
+    ) -> PerformanceSection:
+        return MariaDBPerformanceReport(self._connect, database).get_unused_indexes(limit, offset)
+
+    def get_redundant_indexes(
+        self, database: str = "", limit: int = 20, offset: int = 0
+    ) -> PerformanceSection:
+        return MariaDBPerformanceReport(self._connect, database).get_redundant_indexes(limit, offset)
+
+    @property
+    def is_performance_schema_enabled(self) -> bool:
+        connection = self._connect()
+        try:
+            with connection.cursor() as cursor:
+                return MariaDBPerformanceReport(self._connect).is_performance_schema_enabled(cursor)
+        finally:
+            connection.close()
 
     def get_binlog_status(self) -> BinlogStatus:
         files = self.get_binlog_files()

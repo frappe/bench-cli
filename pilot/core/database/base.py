@@ -148,16 +148,12 @@ class RedundantIndex:
 
 
 @dataclass
-class PerformanceReport:
-    """Query and index findings for a scope. Every section except
-    `redundant_indexes` is derived from Performance Schema and stays empty
-    while it is off, which `performance_schema_enabled` explains."""
+class PerformanceSection:
+    """One page of one performance report section. `has_next_page` comes from
+    reading one row past the page, so it costs no extra query."""
 
-    performance_schema_enabled: bool
-    time_consuming_queries: list[TimeConsumingQuery]
-    full_table_scan_queries: list[FullTableScanQuery]
-    unused_indexes: list[UnusedIndex]
-    redundant_indexes: list[RedundantIndex]
+    data: list[TimeConsumingQuery | FullTableScanQuery | UnusedIndex | RedundantIndex]
+    has_next_page: bool
 
 
 class Database(ABC):
@@ -204,8 +200,32 @@ class Database(ABC):
         """`database` narrows the result to one database; empty means server-wide."""
         raise NotImplementedError
 
-    def get_performance_report(self, database: str = "") -> PerformanceReport:
+    def get_time_consuming_queries(
+        self, database: str = "", limit: int = 20, offset: int = 0
+    ) -> PerformanceSection:
         """`database` narrows the result to one database; empty means server-wide."""
+        raise NotImplementedError
+
+    def get_full_table_scan_queries(
+        self, database: str = "", limit: int = 20, offset: int = 0
+    ) -> PerformanceSection:
+        """`database` narrows the result to one database; empty means server-wide."""
+        raise NotImplementedError
+
+    def get_unused_indexes(
+        self, database: str = "", limit: int = 20, offset: int = 0
+    ) -> PerformanceSection:
+        """`database` narrows the result to one database; empty means server-wide."""
+        raise NotImplementedError
+
+    def get_redundant_indexes(
+        self, database: str = "", limit: int = 20, offset: int = 0
+    ) -> PerformanceSection:
+        """`database` narrows the result to one database; empty means server-wide."""
+        raise NotImplementedError
+
+    @property
+    def is_performance_schema_enabled(self) -> bool:
         raise NotImplementedError
 
     def get_binlog_status(self) -> BinlogStatus:

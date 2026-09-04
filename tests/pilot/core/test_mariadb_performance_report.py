@@ -1,4 +1,4 @@
-"""Tests for MariaDBPerformanceReport's scoping and Performance Schema gating."""
+"""Tests for MariaDBPerformanceReport's scoping, paging and row mapping."""
 
 from __future__ import annotations
 
@@ -46,48 +46,13 @@ def _connect(cursor: FakeCursor):
     return lambda: connection
 
 
-def _performance_schema_off() -> FakeCursor:
-    return FakeCursor([[{"enabled": 0}], []])
-
-
-def test_disabled_performance_schema_still_reports_redundant_indexes() -> None:
-    cursor = FakeCursor(
-        [
-            [{"enabled": 0}],
-            [
-                {
-                    "db": "site_db",
-                    "table_name": "tabUser",
-                    "redundant_index_name": "lft",
-                    "redundant_index_columns": "lft",
-                    "dominant_index_name": "lft_rgt",
-                    "dominant_index_columns": "lft,rgt",
-                }
-            ],
-        ]
-    )
-    report = MariaDBPerformanceReport(_connect(cursor), "site_db").build()
-
-    assert report.performance_schema_enabled is False
-    assert report.time_consuming_queries == []
-    assert report.full_table_scan_queries == []
-    assert report.unused_indexes == []
-    assert len(report.redundant_indexes) == 1
-    assert report.redundant_indexes[0].dominant_index == "lft_rgt"
-
-
-def test_disabled_performance_schema_does_not_query_it() -> None:
-    cursor = _performance_schema_off()
-    MariaDBPerformanceReport(_connect(cursor), "site_db").build()
-
-    queried = " ".join(query for query, _ in cursor.calls)
-    assert "events_statements_summary_by_digest" not in queried
-    assert "table_io_waits_summary_by_index_usage" not in queried
+def _unused_index_row(index: str) -> dict:
+    return {"db": "site_db", "table_name": "tabUser", "index_name": index}
 
 
 def test_site_scope_binds_the_database_name_instead_of_interpolating_it() -> None:
-    cursor = _performance_schema_off()
-    MariaDBPerformanceReport(_connect(cursor), "site_db").build()
+    cursor = FakeCursor([[]])
+    MariaDBPerformanceReport(_connect(cursor), "site_db").get_unused_indexes()
 
     query, parameters = cursor.calls[-1]
     assert "site_db" not in query
@@ -95,8 +60,8 @@ def test_site_scope_binds_the_database_name_instead_of_interpolating_it() -> Non
 
 
 def test_server_scope_excludes_system_schemas() -> None:
-    cursor = _performance_schema_off()
-    MariaDBPerformanceReport(_connect(cursor), "").build()
+    cursor = FakeCursor([[]])
+    MariaDBPerformanceReport(_connect(cursor), "").get_unused_indexes()
 
     query, parameters = cursor.calls[-1]
     assert "%(system_schemas)s" in query
@@ -104,85 +69,92 @@ def test_server_scope_excludes_system_schemas() -> None:
     assert parameters["database"] == ""
 
 
-def test_statements_execute_verbatim_without_building_sql() -> None:
-    cursor = FakeCursor([[{"enabled": 1}], [], [], [], []])
-    MariaDBPerformanceReport(_connect(cursor), "site_db").build()
-
-    statements = {
-        TIME_CONSUMING_QUERIES,
-        FULL_TABLE_SCAN_QUERIES,
-        UNUSED_INDEXES,
-        REDUNDANT_INDEXES,
-    }
-    assert {query for query, _ in cursor.calls} >= statements
+def test_each_section_executes_its_statement_verbatim_without_building_sql() -> None:
+    report = MariaDBPerformanceReport
+    for method, statement in (
+        ("get_time_consuming_queries", TIME_CONSUMING_QUERIES),
+        ("get_full_table_scan_queries", FULL_TABLE_SCAN_QUERIES),
+        ("get_unused_indexes", UNUSED_INDEXES),
+        ("get_redundant_indexes", REDUNDANT_INDEXES),
+    ):
+        cursor = FakeCursor([[]])
+        getattr(report(_connect(cursor), "site_db"), method)()
+        assert [query for query, _ in cursor.calls] == [statement], method
 
 
 def test_unused_indexes_exclude_framework_indexes() -> None:
-    cursor = FakeCursor([[{"enabled": 1}], [], [], [], []])
-    MariaDBPerformanceReport(_connect(cursor), "site_db").build()
+    cursor = FakeCursor([[]])
+    MariaDBPerformanceReport(_connect(cursor), "site_db").get_unused_indexes()
 
-    unused = next(query for query, _ in cursor.calls if "table_io_waits" in query)
-    parameters = next(params for query, params in cursor.calls if "table_io_waits" in query)
-    assert "framework_indexes" in unused
+    query, parameters = cursor.calls[-1]
+    assert "framework_indexes" in query
     assert parameters["framework_indexes"] == FRAMEWORK_INDEXES
 
 
-def test_enabled_performance_schema_maps_every_section() -> None:
+def test_a_page_reads_one_row_past_it_to_answer_has_next_page() -> None:
+    cursor = FakeCursor([[_unused_index_row(f"idx_{n}") for n in range(3)]])
+    section = MariaDBPerformanceReport(_connect(cursor), "site_db").get_unused_indexes(limit=2)
+
+    _, parameters = cursor.calls[-1]
+    assert parameters["limit"] == 3
+    assert len(section.data) == 2
+    assert section.has_next_page is True
+
+
+def test_a_short_page_has_no_next_page() -> None:
+    cursor = FakeCursor([[_unused_index_row("idx_0")]])
+    section = MariaDBPerformanceReport(_connect(cursor), "site_db").get_unused_indexes(limit=2)
+
+    assert len(section.data) == 1
+    assert section.has_next_page is False
+
+
+def test_offset_is_bound_rather_than_interpolated() -> None:
+    cursor = FakeCursor([[]])
+    MariaDBPerformanceReport(_connect(cursor), "site_db").get_unused_indexes(limit=10, offset=40)
+
+    query, parameters = cursor.calls[-1]
+    assert "OFFSET %(offset)s" in query
+    assert parameters["offset"] == 40
+
+
+def test_sections_map_their_rows() -> None:
     cursor = FakeCursor(
         [
-            [{"enabled": 1}],
             [
                 {
                     "db": "site_db",
-                    "query": "SELECT ?",
-                    "percent": 42.5,
-                    "calls": 3,
-                    "average_time_ms": 1.5,
-                    "total_time_ms": 4.5,
+                    "query": "SELECT 1",
+                    "percent": "42.5",
+                    "calls": "3",
+                    "average_time_ms": "1.5",
+                    "total_time_ms": "4.5",
                 }
-            ],
-            [
-                {
-                    "db": "site_db",
-                    "query": "SELECT ? FROM tabUser",
-                    "calls": 2,
-                    "rows_sent": 1,
-                    "rows_examined": 5000,
-                }
-            ],
-            [{"db": "site_db", "table_name": "tabUser", "index_name": "modified"}],
-            [],
+            ]
         ]
     )
-    report = MariaDBPerformanceReport(_connect(cursor), "site_db").build()
+    section = MariaDBPerformanceReport(_connect(cursor), "site_db").get_time_consuming_queries()
 
-    assert report.performance_schema_enabled is True
-    assert report.time_consuming_queries[0].percent == 42.5
-    assert report.time_consuming_queries[0].calls == 3
-    assert report.full_table_scan_queries[0].rows_examined == 5000
-    assert report.unused_indexes[0].index == "modified"
+    assert section.data[0].percent == 42.5
+    assert section.data[0].calls == 3
 
 
 def test_null_counters_become_zero_rather_than_failing() -> None:
     cursor = FakeCursor(
         [
-            [{"enabled": 1}],
             [
                 {
-                    "db": None,
-                    "query": None,
+                    "db": "site_db",
+                    "query": "SELECT 1",
                     "percent": None,
                     "calls": None,
                     "average_time_ms": None,
                     "total_time_ms": None,
                 }
-            ],
-            [],
-            [],
-            [],
+            ]
         ]
     )
-    report = MariaDBPerformanceReport(_connect(cursor), "").build()
+    section = MariaDBPerformanceReport(_connect(cursor), "").get_time_consuming_queries()
 
-    assert report.time_consuming_queries[0].percent == 0.0
-    assert report.time_consuming_queries[0].calls == 0
+    assert section.data[0].percent == 0.0
+    assert section.data[0].calls == 0

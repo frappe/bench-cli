@@ -823,14 +823,10 @@ def test_purge_succeeds(tmp_path: Path) -> None:
     provider.purge_binlogs.assert_called_once_with("mysql-bin.000002")
 
 
-def test_performance_report_returns_the_provider_payload(tmp_path: Path) -> None:
+def test_a_performance_section_returns_the_provider_payload(tmp_path: Path) -> None:
     client = _client(tmp_path / "benches" / "current")
-    report = {
-        "performance_schema_enabled": False,
-        "time_consuming_queries": [],
-        "full_table_scan_queries": [],
-        "unused_indexes": [],
-        "redundant_indexes": [
+    section = {
+        "data": [
             {
                 "database": "site_db",
                 "table": "tabUser",
@@ -840,36 +836,66 @@ def test_performance_report_returns_the_provider_payload(tmp_path: Path) -> None
                 "dominant_index_columns": "lft,rgt",
             }
         ],
+        "has_next_page": True,
     }
-    patcher, provider = _patched_provider(**{"get_performance_report.return_value": report})
+    patcher, provider = _patched_provider(**{"get_redundant_indexes.return_value": section})
     with patcher:
-        response = client.get("/api/v1/database/performance-report?site=shop.local")
+        response = client.get("/api/v1/database/performance-report?report_type=redundant_indexes&site=shop.local")
 
     assert response.status_code == 200
-    assert response.get_json() == report
-    provider.get_performance_report.assert_called_once_with("shop.local")
+    assert response.get_json() == section
+    provider.get_redundant_indexes.assert_called_once_with("shop.local", 20, 0)
 
 
-def test_performance_report_defaults_to_the_whole_server(tmp_path: Path) -> None:
+def test_a_performance_section_defaults_to_the_whole_server_and_first_page(tmp_path: Path) -> None:
     client = _client(tmp_path / "benches" / "current")
-    patcher, provider = _patched_provider(**{"get_performance_report.return_value": {}})
+    patcher, provider = _patched_provider(**{"get_unused_indexes.return_value": {}})
     with patcher:
-        client.get("/api/v1/database/performance-report")
+        client.get("/api/v1/database/performance-report?report_type=unused_indexes")
 
-    provider.get_performance_report.assert_called_once_with("")
+    provider.get_unused_indexes.assert_called_once_with("", 20, 0)
 
 
-def test_performance_report_maps_unsupported_engine_to_422(tmp_path: Path) -> None:
+def test_a_performance_section_passes_the_requested_page_through(tmp_path: Path) -> None:
+    client = _client(tmp_path / "benches" / "current")
+    patcher, provider = _patched_provider(**{"get_unused_indexes.return_value": {}})
+    with patcher:
+        client.get("/api/v1/database/performance-report?report_type=unused_indexes&limit=50&offset=100")
+
+    provider.get_unused_indexes.assert_called_once_with("", 50, 100)
+
+
+def test_a_performance_section_rejects_a_non_numeric_page(tmp_path: Path) -> None:
+    client = _client(tmp_path / "benches" / "current")
+    patcher, _ = _patched_provider(**{"get_unused_indexes.return_value": {}})
+    with patcher:
+        response = client.get("/api/v1/database/performance-report?report_type=unused_indexes&limit=all")
+
+    assert response.status_code == 422
+    assert response.get_json()["error"]["code"] == "invalid_page"
+
+
+def test_an_unknown_report_type_is_rejected(tmp_path: Path) -> None:
+    client = _client(tmp_path / "benches" / "current")
+    patcher, _ = _patched_provider(**{"get_unused_indexes.return_value": {}})
+    with patcher:
+        response = client.get("/api/v1/database/performance-report?report_type=nope")
+
+    assert response.status_code == 422
+    assert response.get_json()["error"]["code"] == "invalid_report_type"
+
+
+def test_a_performance_section_maps_unsupported_engine_to_422(tmp_path: Path) -> None:
     client = _client(tmp_path / "benches" / "current")
     patcher, _ = _patched_provider(
         **{
-            "get_performance_report.side_effect": DatabaseError(
+            "get_time_consuming_queries.side_effect": DatabaseError(
                 "The selected engine does not support this operation"
             )
         }
     )
     with patcher:
-        response = client.get("/api/v1/database/performance-report")
+        response = client.get("/api/v1/database/performance-report?report_type=time_consuming_queries")
 
     assert response.status_code == 422
     assert response.get_json()["error"]["code"] == "performance_report_unavailable"

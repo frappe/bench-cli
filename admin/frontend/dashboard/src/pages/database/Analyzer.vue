@@ -73,9 +73,6 @@ const diagnostics = ref(null)
 const configuredEngine = ref('')
 const sites = ref([])
 const selectedSite = ref('')
-const performance = ref(null)
-const performanceLoading = ref(false)
-const performanceError = ref('')
 
 const processes = ref([])
 const processesLoading = ref(false)
@@ -85,7 +82,6 @@ const lockWaits = ref([])
 const lockWaitsLoading = ref(false)
 const lockWaitsError = ref('')
 const autoRefreshLocks = ref(true)
-let performanceRequestVersion = 0
 let lockWaitsTimer = null
 let lockWaitsPollVersion = 0
 let lockWaitsRequest = null
@@ -349,23 +345,9 @@ const loadSize = async () => {
   }
 }
 
-const loadPerformance = async () => {
-  const version = ++performanceRequestVersion
-  performanceLoading.value = true
-  performanceError.value = ''
-  try {
-    const result = await databaseApi.performanceReport(selectedSite.value)
-    if (version !== performanceRequestVersion) return
-    if (result?.error)
-      throw new Error(apiErrorMessage(result, 'Could not read the performance report.'))
-    performance.value = result
-  } catch (e) {
-    if (version !== performanceRequestVersion) return
-    performance.value = null
-    performanceError.value = e.message || 'Could not read the performance report.'
-  } finally {
-    if (version === performanceRequestVersion) performanceLoading.value = false
-  }
+const openLockWaits = () => {
+  loadLockWaits()
+  if (autoRefreshLocks.value) startLockWaitsAutoRefresh()
 }
 
 const loadBinlogs = async () => {
@@ -411,7 +393,6 @@ watch(selectedSite, () => {
   loadProcesses()
   loadLockWaits()
   loadSize()
-  loadPerformance()
 })
 
 onUnmounted(stopLockWaitsAutoRefresh)
@@ -427,10 +408,8 @@ const load = async () => {
     diagnostics.value = result
     configuredEngine.value = result.engine
     if (!result.supported) return
-    const panels = [loadSites(), loadSize(), loadProcesses(), loadLockWaits(), loadPerformance()]
-    if (hasBinlogs.value) panels.push(loadBinlogs())
-    await Promise.all(panels)
-    if (autoRefreshLocks.value) startLockWaitsAutoRefresh()
+    // The rest of the panels start collapsed and load themselves on first expand.
+    await Promise.all([loadSites(), loadSize()])
   } catch (e) {
     error.value = e.message || 'Could not load database diagnostics.'
   } finally {
@@ -509,6 +488,7 @@ onMounted(load)
         subtitle="Analyze the processes of the database"
         :badge="scopeBadge"
         :loading="processesLoading"
+        @open="loadProcesses"
         @refresh="loadProcesses"
       >
         <ErrorMessage v-if="processesError" :message="processesError" class="m-4" />
@@ -533,6 +513,7 @@ onMounted(load)
         subtitle="Analyze the lock waits of the database"
         :badge="[scopeBadge, lockColumnsBadge]"
         :loading="lockWaitsLoading"
+        @open="openLockWaits"
         @refresh="loadLockWaits"
       >
         <template #actions>
@@ -549,23 +530,19 @@ onMounted(load)
       </DatabasePanel>
 
       <QueryAnalysisPanel
-        :report="performance"
-        :loading="performanceLoading"
-        :error="performanceError"
+        :site="selectedSite"
         :badge="scopeBadge"
+        :enabled="Boolean(diagnostics?.performance_schema_enabled)"
         :show-site="!selectedSite"
         :site-by-database="siteByDatabase"
-        @refresh="loadPerformance"
       />
 
       <IndexAnalysisPanel
-        :report="performance"
-        :loading="performanceLoading"
-        :error="performanceError"
+        :site="selectedSite"
         :badge="scopeBadge"
+        :enabled="Boolean(diagnostics?.performance_schema_enabled)"
         :show-site="!selectedSite"
         :site-by-database="siteByDatabase"
-        @refresh="loadPerformance"
       />
 
       <DatabasePanel
@@ -574,6 +551,7 @@ onMounted(load)
         subtitle="Manage the binary logs of the database"
         :badge="selectedSite ? 'Server-wide' : ''"
         :loading="binlogsLoading"
+        @open="loadBinlogs"
         @refresh="loadBinlogs"
       >
         <ErrorMessage v-if="binlogsError" :message="binlogsError" class="m-4" />

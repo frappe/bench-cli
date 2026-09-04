@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Badge, Button } from 'frappe-ui'
 
 import Collapsable from '@/components/common/Collapsable.vue'
@@ -19,12 +19,21 @@ const props = withDefaults(defineProps<Props>(), {
   hideChevron: false,
 })
 
-defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'open'])
 
 const badges = computed(() => [props.badge].flat().filter(Boolean))
 
 /** A panel with no chevron has nothing to click, so it stays open. */
 const opened = ref(props.hideChevron)
+
+// Callers load on first expand, so re-opening must not refetch.
+const wasOpened = ref(props.hideChevron)
+
+watch(opened, (isOpen) => {
+  if (!isOpen || wasOpened.value) return
+  wasOpened.value = true
+  emit('open')
+})
 </script>
 
 <template>

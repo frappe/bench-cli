@@ -5,7 +5,7 @@ from typing import Any
 
 from pilot.core.database.base import (
     FullTableScanQuery,
-    PerformanceReport,
+    PerformanceSection,
     RedundantIndex,
     TimeConsumingQuery,
     UnusedIndex,
@@ -26,7 +26,7 @@ TIME_CONSUMING_QUERIES = """
     WHERE (SCHEMA_NAME = %(database)s
            OR (%(database)s = '' AND SCHEMA_NAME NOT IN %(system_schemas)s))
     ORDER BY SUM_TIMER_WAIT DESC
-    LIMIT 10
+    LIMIT %(limit)s OFFSET %(offset)s
 """
 
 FULL_TABLE_SCAN_QUERIES = """
@@ -42,7 +42,7 @@ FULL_TABLE_SCAN_QUERIES = """
       AND DIGEST_TEXT NOT LIKE 'SHOW%%'
     ORDER BY ROUND(IFNULL(SUM_NO_INDEX_USED / NULLIF(COUNT_STAR, 0), 0) * 100, 0) DESC,
              SUM_TIMER_WAIT DESC
-    LIMIT 10
+    LIMIT %(limit)s OFFSET %(offset)s
 """
 
 UNUSED_INDEXES = """
@@ -57,6 +57,7 @@ UNUSED_INDEXES = """
       AND INDEX_NAME NOT IN %(framework_indexes)s
       AND COUNT_STAR = 0
     ORDER BY OBJECT_NAME, INDEX_NAME
+    LIMIT %(limit)s OFFSET %(offset)s
 """
 
 REDUNDANT_INDEXES = """
@@ -103,6 +104,7 @@ REDUNDANT_INDEXES = """
             AND dominant.non_unique = 0
         )
     ORDER BY redundant.table_name, redundant.index_name
+    LIMIT %(limit)s OFFSET %(offset)s
 """
 
 
@@ -115,76 +117,83 @@ class MariaDBPerformanceReport:
         self._connect = connect
         self._database = database
 
-    def build(self) -> PerformanceReport:
-        connection = self._connect()
-        try:
-            with connection.cursor() as cursor:
-                enabled = self.is_performance_schema_enabled(cursor)
-                return PerformanceReport(
-                    performance_schema_enabled=enabled,
-                    time_consuming_queries=self.get_time_consuming_queries(cursor) if enabled else [],
-                    full_table_scan_queries=self.get_full_table_scan_queries(cursor) if enabled else [],
-                    unused_indexes=self.get_unused_indexes(cursor) if enabled else [],
-                    redundant_indexes=self.get_redundant_indexes(cursor),
-                )
-        finally:
-            connection.close()
+    def get_time_consuming_queries(self, limit: int = 20, offset: int = 0) -> PerformanceSection:
+        return self._section(TIME_CONSUMING_QUERIES, self._time_consuming_query, limit, offset)
+
+    def get_full_table_scan_queries(self, limit: int = 20, offset: int = 0) -> PerformanceSection:
+        return self._section(FULL_TABLE_SCAN_QUERIES, self._full_table_scan_query, limit, offset)
+
+    def get_unused_indexes(self, limit: int = 20, offset: int = 0) -> PerformanceSection:
+        return self._section(
+            UNUSED_INDEXES, self._unused_index, limit, offset, framework_indexes=FRAMEWORK_INDEXES
+        )
+
+    def get_redundant_indexes(self, limit: int = 20, offset: int = 0) -> PerformanceSection:
+        return self._section(REDUNDANT_INDEXES, self._redundant_index, limit, offset)
 
     def is_performance_schema_enabled(self, cursor) -> bool:
         cursor.execute("SELECT @@GLOBAL.performance_schema AS enabled")
         row = cursor.fetchone()
         return bool(row and row["enabled"])
 
-    def get_time_consuming_queries(self, cursor) -> list[TimeConsumingQuery]:
-        rows = self._fetch(cursor, TIME_CONSUMING_QUERIES)
-        return [
-            TimeConsumingQuery(
-                database=row["db"],
-                query=row["query"],
-                percent=float(row["percent"] or 0),
-                calls=int(row["calls"] or 0),
-                average_time_ms=float(row["average_time_ms"] or 0),
-                total_time_ms=float(row["total_time_ms"] or 0),
-            )
-            for row in rows
-        ]
+    def _section(self, query, build_row, limit: int, offset: int, **parameters) -> PerformanceSection:
+        connection = self._connect()
+        try:
+            with connection.cursor() as cursor:
+                # One row past the page answers "is there more" without a COUNT.
+                rows = self._fetch(cursor, query, limit + 1, offset, **parameters)
+                return PerformanceSection(
+                    data=[build_row(row) for row in rows[:limit]],
+                    has_next_page=len(rows) > limit,
+                )
+        finally:
+            connection.close()
 
-    def get_full_table_scan_queries(self, cursor) -> list[FullTableScanQuery]:
-        rows = self._fetch(cursor, FULL_TABLE_SCAN_QUERIES)
-        return [
-            FullTableScanQuery(
-                database=row["db"],
-                query=row["query"],
-                calls=int(row["calls"] or 0),
-                rows_sent=int(row["rows_sent"] or 0),
-                rows_examined=int(row["rows_examined"] or 0),
-            )
-            for row in rows
-        ]
+    @staticmethod
+    def _time_consuming_query(row: dict) -> TimeConsumingQuery:
+        return TimeConsumingQuery(
+            database=row["db"],
+            query=row["query"],
+            percent=float(row["percent"] or 0),
+            calls=int(row["calls"] or 0),
+            average_time_ms=float(row["average_time_ms"] or 0),
+            total_time_ms=float(row["total_time_ms"] or 0),
+        )
 
-    def get_unused_indexes(self, cursor) -> list[UnusedIndex]:
-        rows = self._fetch(cursor, UNUSED_INDEXES, framework_indexes=FRAMEWORK_INDEXES)
-        return [
-            UnusedIndex(database=row["db"], table=row["table_name"], index=row["index_name"]) for row in rows
-        ]
+    @staticmethod
+    def _full_table_scan_query(row: dict) -> FullTableScanQuery:
+        return FullTableScanQuery(
+            database=row["db"],
+            query=row["query"],
+            calls=int(row["calls"] or 0),
+            rows_sent=int(row["rows_sent"] or 0),
+            rows_examined=int(row["rows_examined"] or 0),
+        )
 
-    def get_redundant_indexes(self, cursor) -> list[RedundantIndex]:
-        rows = self._fetch(cursor, REDUNDANT_INDEXES)
-        return [
-            RedundantIndex(
-                database=row["db"],
-                table=row["table_name"],
-                redundant_index=row["redundant_index_name"],
-                redundant_index_columns=row["redundant_index_columns"],
-                dominant_index=row["dominant_index_name"],
-                dominant_index_columns=row["dominant_index_columns"],
-            )
-            for row in rows
-        ]
+    @staticmethod
+    def _unused_index(row: dict) -> UnusedIndex:
+        return UnusedIndex(database=row["db"], table=row["table_name"], index=row["index_name"])
 
-    def _fetch(self, cursor, query: str, **parameters) -> list[dict]:
+    @staticmethod
+    def _redundant_index(row: dict) -> RedundantIndex:
+        return RedundantIndex(
+            database=row["db"],
+            table=row["table_name"],
+            redundant_index=row["redundant_index_name"],
+            redundant_index_columns=row["redundant_index_columns"],
+            dominant_index=row["dominant_index_name"],
+            dominant_index_columns=row["dominant_index_columns"],
+        )
+
+    def _fetch(self, cursor, query: str, limit: int, offset: int, **parameters) -> list[dict]:
         cursor.execute(
             query,
-            {"database": self._database, "system_schemas": SYSTEM_SCHEMAS, **parameters},
+            {
+                "database": self._database,
+                "system_schemas": SYSTEM_SCHEMAS,
+                "limit": limit,
+                "offset": offset,
+                **parameters,
+            },
         )
         return list(cursor.fetchall())
