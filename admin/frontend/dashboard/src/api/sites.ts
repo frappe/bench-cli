@@ -85,6 +85,13 @@ export const sitesApi = {
         .get(`sites/${encodeURIComponent(name)}/backups`, { searchParams: limit ? { limit } : {} })
         .json(),
     create: (name) => request.post(`sites/${encodeURIComponent(name)}/backups`).json(),
+    restore: (name, timestamp, newSiteName) =>
+      request
+        .post(
+          `sites/${encodeURIComponent(name)}/backups/${encodeURIComponent(timestamp)}/actions/restore`,
+          { json: { new_site_name: newSiteName } },
+        )
+        .json(),
     download: (name, timestamp, fileId) =>
       apiUrl(
         `sites/${encodeURIComponent(name)}/backups/${encodeURIComponent(timestamp)}/files/${encodeURIComponent(fileId)}/content`,

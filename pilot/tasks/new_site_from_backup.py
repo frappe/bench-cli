@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from typing import Annotated, ClassVar
 
@@ -16,10 +17,15 @@ class NewSiteFromBackupTask(Task):
     admin_password: Annotated[str, Arg(cli=False)]
     public_files: str | None = None
     private_files: str | None = None
+    # Directory of archives hardlinked for this restore; removed once it succeeds.
+    # Kept on failure so a retry still has its inputs.
+    staging_dir: str | None = None
 
     def run(self) -> None:
         self.require_production_privileges()
         self.restore()
+        if self.staging_dir:
+            shutil.rmtree(self.staging_dir, ignore_errors=True)
 
     @step("restore", lambda self: f"Restore site {self.name} from backup")
     def restore(self) -> None:

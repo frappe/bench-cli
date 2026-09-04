@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { computed, onMounted, ref } from 'vue'
-import { Badge, Button, Dialog, Dropdown, ErrorMessage, Select } from 'frappe-ui'
+import { Badge, Button, Dialog, Dropdown, ErrorMessage, Select, TextInput } from 'frappe-ui'
 
 import EmptyState from '@/components/common/EmptyState.vue'
 import ListSkeleton from '@/components/common/ListSkeleton.vue'
@@ -118,6 +118,20 @@ const menuOptions = (set) => {
         icon: 'lucide-download',
         onClick: () => downloadFile(set, k),
       })),
+    ...(fileOf(set, 'database')?.path
+      ? [
+          {
+            label: 'Restore to new site',
+            icon: 'lucide-archive-restore',
+            onClick: () => {
+              restoreTarget.value = set
+              restoreName.value = ''
+              restoreError.value = ''
+              showRestore.value = true
+            },
+          },
+        ]
+      : []),
     {
       label: 'Delete backup',
       icon: 'lucide-trash-2',
@@ -153,6 +167,32 @@ const downloadFile = async (set, kind) => {
     window.open(url, '_blank')
   } catch (e) {
     error.value = e.message || 'Failed to get offsite download link.'
+  }
+}
+
+const showRestore = ref(false)
+const restoreTarget = ref(null)
+const restoring = ref(false)
+const restoreError = ref('')
+const restoreName = ref('')
+
+const confirmRestore = async () => {
+  restoring.value = true
+  restoreError.value = ''
+  try {
+    const data = await sitesApi.backups.restore(
+      props.siteName,
+      restoreTarget.value.timestamp,
+      restoreName.value.trim(),
+    )
+    if (data.task_id) {
+      showRestore.value = false
+      openTaskDetailPage(router, data.task_id)
+    } else restoreError.value = apiErrorMessage(data, 'Restore failed.')
+  } catch (e) {
+    restoreError.value = e.message || 'Restore failed.'
+  } finally {
+    restoring.value = false
   }
 }
 
@@ -264,6 +304,32 @@ onMounted(() => {
       <Button v-if="backupsHasMore" class="ml-auto" @click="loadMoreBackups">Load more</Button>
     </div>
   </template>
+
+  <Dialog v-model="showRestore" title="Restore Backup" size="sm">
+    <p class="text-ink-gray-7 text-sm">
+      Create a new site from the backup of
+      <strong>{{ restoreTarget ? fmtDateTime(restoreTarget.created_at) : '' }}</strong
+      >. {{ siteName }} itself is not touched.
+    </p>
+
+    <TextInput v-model="restoreName" placeholder="new-name.example.com" class="mt-3 w-full">
+      <template #label>
+        <span class="text-sm">New site name</span>
+      </template>
+    </TextInput>
+
+    <ErrorMessage v-if="restoreError" :message="restoreError" class="mt-2" />
+    <div class="flex justify-end gap-2 mt-4">
+      <Button variant="ghost" @click="showRestore = false">Cancel</Button>
+      <Button
+        variant="solid"
+        :loading="restoring"
+        :disabled="!restoreName.trim() || restoreName.trim() === siteName"
+        @click="confirmRestore"
+        >Restore</Button
+      >
+    </div>
+  </Dialog>
 
   <Dialog v-model="showDelete" title="Delete Backup" size="sm">
     <p class="text-ink-gray-7 text-sm">

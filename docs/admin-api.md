@@ -84,6 +84,10 @@ Measuring means a `du` per site directory and one schema-size query, so the rout
 
 `POST /sites/<name>/actions/refresh-storage` queues `refresh-storage-usage` to measure again on demand. One report covers every site on the bench, so the task re-measures all of them and concurrent requests fold into one run.
 
+### Backup Restore
+
+`POST /sites/<name>/backups/<timestamp>/actions/restore` takes `new_site_name`, validated like a new-site name, and queues `new-site-from-backup` holding both the source and destination site locks. The backup's database file must be local to this server (offsite-only sets answer 422); public/private file archives are included when present. The selected archives are hardlinked into a staging directory at submit time, so a later backup or retention run cannot delete the restore's inputs. The source site is not modified - restoring under a fresh name is also how you copy a site.
+
 ### Setup
 
 Every `/setup/*` route needs a session, like the rest of the API. The Admin password is set when the bench is created (`pilot new`), so there is no unauthenticated window: a browser reaches the wizard through the `?sid=` link that `pilot start` prints, or by signing in with that password. `POST /benches` returns a `setup_link` token for the same purpose.
