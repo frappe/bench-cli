@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 
 import PerformanceSchemaNotice from '@/components/database/PerformanceSchemaNotice.vue'
 import ResultTable from '@/components/database/ResultTable.vue'
-import ToggleContent from '@/components/database/ToggleContent.vue'
+import DatabasePanel from '@/components/database/DatabasePanel.vue'
 
 const props = defineProps({
   badge: { type: String, default: '' },
@@ -68,7 +68,7 @@ const activeTab = computed(() => tabs.value.find((entry) => entry.value === tab.
 </script>
 
 <template>
-  <ToggleContent
+  <DatabasePanel
     title="Database Index Analysis"
     subtitle="Analyze the indexes of the database"
     :badge="badge"
@@ -90,5 +90,5 @@ const activeTab = computed(() => tabs.value.find((entry) => entry.value === tab.
         is-truncate-text
       />
     </template>
-  </ToggleContent>
+  </DatabasePanel>
 </template>

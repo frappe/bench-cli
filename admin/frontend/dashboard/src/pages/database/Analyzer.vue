@@ -2,10 +2,21 @@
 import { useRoute } from 'vue-router'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
-import { Button, Checkbox, Dialog, ErrorMessage, LoadingText, Select, Tooltip, toast } from 'frappe-ui'
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  ErrorMessage,
+  LoadingText,
+  Select,
+  Skeleton,
+  Switch,
+  Tooltip,
+  toast,
+} from 'frappe-ui'
 
 import SizeBreakup from '@/components/database/SizeBreakup.vue'
-import ToggleContent from '@/components/database/ToggleContent.vue'
+import DatabasePanel from '@/components/database/DatabasePanel.vue'
 import IndexAnalysisPanel from '@/components/database/IndexAnalysisPanel.vue'
 import QueryAnalysisPanel from '@/components/database/QueryAnalysisPanel.vue'
 import Table from '@/components/common/Table.vue'
@@ -464,12 +475,12 @@ onMounted(load)
     <ErrorMessage v-else-if="error" :message="error" />
 
     <template v-else-if="diagnostics">
-      <ToggleContent
+      <DatabasePanel
         title="Database Size Breakup"
         subtitle="Analyze how storage is used"
+        hide-chevron
         :badge="selectedSite ? scopeBadge : 'Server-wide'"
         :loading="sizeLoading"
-        :collapsible="false"
         @refresh="loadSize"
       >
         <template v-if="selectedSite" #actions>
@@ -477,14 +488,23 @@ onMounted(load)
         </template>
 
         <ErrorMessage v-if="sizeError" :message="sizeError" class="m-4" />
+
+        <div v-else-if="sizeLoading" class="px-4 pb-4">
+          <Skeleton class="rounded-full w-full h-5" />
+          <div v-for="row in 3" :key="row" class="flex justify-between gap-4 py-2">
+            <Skeleton class="rounded-4 w-32 h-4" />
+            <Skeleton class="rounded-4 w-16 h-4" />
+          </div>
+        </div>
+
         <p v-else-if="!size" class="py-6 text-ink-gray-5 text-sm text-center">
           No results to display
         </p>
 
         <SizeBreakup v-else :size="size" />
-      </ToggleContent>
+      </DatabasePanel>
 
-      <ToggleContent
+      <DatabasePanel
         title="Database Processes"
         subtitle="Analyze the processes of the database"
         :badge="scopeBadge"
@@ -494,7 +514,7 @@ onMounted(load)
         <ErrorMessage v-if="processesError" :message="processesError" class="m-4" />
         <Table
           v-else-if="processRows.length"
-          class="p-4"
+          class="px-4 pb-4"
           :columns="processColumns"
           :rows="processRows"
         >
@@ -506,23 +526,27 @@ onMounted(load)
         </Table>
 
         <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-      </ToggleContent>
+      </DatabasePanel>
 
-      <ToggleContent
+      <DatabasePanel
         title="Database Locks"
         subtitle="Analyze the lock waits of the database"
         :badge="[scopeBadge, lockColumnsBadge]"
         :loading="lockWaitsLoading"
-        show-auto-refresh
-        :auto-refresh="autoRefreshLocks"
-        @update:auto-refresh="autoRefreshLocks = $event"
         @refresh="loadLockWaits"
       >
+        <template #actions>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <Switch v-model="autoRefreshLocks" />
+            <span class="text-ink-gray-7 text-sm">Auto Refresh</span>
+          </label>
+        </template>
+
         <ErrorMessage v-if="lockWaitsError" :message="lockWaitsError" class="m-4" />
-        <Table v-else-if="lockRows.length" class="p-4" :columns="lockColumns" :rows="lockRows" />
+        <Table v-else-if="lockRows.length" class="px-4 pb-4" :columns="lockColumns" :rows="lockRows" />
 
         <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
-      </ToggleContent>
+      </DatabasePanel>
 
       <QueryAnalysisPanel
         :report="performance"
@@ -544,7 +568,7 @@ onMounted(load)
         @refresh="loadPerformance"
       />
 
-      <ToggleContent
+      <DatabasePanel
         v-if="hasBinlogs"
         title="Database Binary Logs"
         subtitle="Manage the binary logs of the database"
@@ -553,6 +577,7 @@ onMounted(load)
         @refresh="loadBinlogs"
       >
         <ErrorMessage v-if="binlogsError" :message="binlogsError" class="m-4" />
+
         <div v-else class="p-4">
           <Table v-if="binlogRows.length" :columns="binlogColumns" :rows="binlogRows">
             <template #selected="{ row }">
@@ -596,7 +621,7 @@ onMounted(load)
             </Button>
           </div>
         </div>
-      </ToggleContent>
+      </DatabasePanel>
     </template>
   </div>
 
@@ -666,13 +691,3 @@ onMounted(load)
     </template>
   </Dialog>
 </template>
-
-<style scoped>
-/* A `1fr` grid track takes its minimum from the item's min-content width, so a
-   long header label or query would widen the table past the panel and add a
-   horizontal scrollbar. Letting the cells shrink keeps every column in view. */
-:deep(.grid) > * {
-  min-width: 0;
-  overflow: hidden;
-}
-</style>

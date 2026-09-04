@@ -34,7 +34,7 @@ const parts = computed(() => {
 </script>
 
 <template>
-  <div class="p-4">
+  <div class="px-4 pb-4">
     <UsageMeter :parts="parts" bar-height="h-5" />
   </div>
 </template>
