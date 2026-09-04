@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { Badge, Button, ErrorMessage, LoadingText } from 'frappe-ui'
 
 import TaskDebugDialog from '@/components/tasks/TaskDebugDialog.vue'
@@ -11,7 +11,6 @@ import { apiErrorMessage } from '@/api/client'
 import { tasksApi } from '@/api/tasks'
 import { settingsApi } from '@/api/settings'
 import { useBreadcrumbs } from '@/composables/common/useBreadcrumbs'
-import { useIsMobile } from '@/composables/common/useIsMobile'
 import { useTaskDetail } from '@/composables/tasks/useTaskDetail'
 
 import {
@@ -29,7 +28,6 @@ const route = useRoute()
 const router = useRouter()
 const taskId = route.params.taskId
 
-const isMobile = useIsMobile()
 const { setBreadcrumbs } = useBreadcrumbs()
 const { task, rawLines, loading, error, load } = useTaskDetail(taskId)
 
@@ -60,7 +58,7 @@ const loadAiStatus = async () => {
 
 const scope = computed(() => taskScope(task.value))
 const scopeIcon = computed(() =>
-  scope.value.route.name === 'Server' ? 'lucide-server' : 'lucide-globe',
+  scope.value.route ? 'lucide-globe' : 'lucide-server',
 )
 
 const queuePosition = computed(() =>
@@ -123,8 +121,8 @@ onMounted(() => {
       />
     </Teleport>
 
-    <Teleport defer to="#header-actions" :disabled="isMobile">
-      <div class="flex items-center gap-2" :class="isMobile ? 'mb-4' : ''">
+    <Teleport defer to="#header-actions">
+      <div class="flex items-center gap-2">
         <Button
           :loading="loading"
           icon="lucide-refresh-cw"
@@ -155,12 +153,13 @@ onMounted(() => {
 
     <div class="flex justify-between items-center gap-4 mt-5 px-2 min-w-0">
       <RouterLink
-        :to="scope.route"
+        :to="scope.route || ''"
         class="group flex items-center gap-2 min-w-0 text-lg-medium text-ink-gray-9 no-underline"
       >
         <span class="size-4 text-ink-gray-5 shrink-0" :class="scopeIcon" />
         <span class="truncate">{{ scope.label }}</span>
         <span
+          v-if="scope.route"
           class="opacity-0 group-hover:opacity-100 size-4 text-ink-gray-5 transition-opacity shrink-0 lucide-arrow-up-right"
         />
       </RouterLink>

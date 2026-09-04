@@ -59,13 +59,23 @@ tbody tr:not(:last-child) td {
   @apply border-b border-outline-gray-1;
 }
 
-th:first-child,
-td:first-child {
+th:first-child {
   @apply rounded-l-4;
 }
 
-th:last-child,
-td:last-child {
+th:last-child {
+  @apply rounded-r-4;
+}
+
+tbody tr:hover td {
+  @apply bg-surface-gray-1;
+}
+
+tbody tr:hover td:first-child {
+  @apply rounded-l-4;
+}
+
+tbody tr:hover td:last-child {
   @apply rounded-r-4;
 }
 </style>

@@ -245,7 +245,7 @@ onMounted(() => {
         <template #site="{ row }">
           <router-link
             :to="{ name: 'SiteDetail', params: { name: row.site.name } }"
-            class="font-medium hover:underline"
+            class="font-medium"
           >
             {{ row.site.name }}
           </router-link>

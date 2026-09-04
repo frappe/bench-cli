@@ -51,7 +51,7 @@ test('taskScope names the server when a task is not bound to a site', () => {
   })
   assert.deepEqual(taskScope({ command: 'build', args: {} }), {
     label: 'Server',
-    route: { name: 'Server' },
+    route: null,
   })
 })
 
