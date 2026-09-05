@@ -1,10 +1,9 @@
 <script setup lang="ts" generic="Row extends Record<string, any>">
-import Scrollbar from '@/components/common/Scrollbar.vue'
-
 interface Column {
   key: string
   label: string
   class?: string
+  cellClass?: string
 }
 
 interface Props {
@@ -21,14 +20,14 @@ defineSlots<{
 </script>
 
 <template>
-  <Scrollbar class="min-h-0" :class="height || 'flex-1'">
+  <div class="min-h-0 overflow-auto" :class="height">
     <table class="border-separate border-spacing-0 min-w-full text-left">
-      <thead class="top-0 z-10 sticky">
+      <thead>
         <tr>
           <th
             v-for="column in columns"
             :key="column.key"
-            class="bg-surface-gray-2 p-2 font-normal text-ink-gray-5 text-sm whitespace-nowrap"
+            class="top-0 z-10 sticky bg-surface-gray-2 p-2 font-normal text-ink-gray-5 text-sm whitespace-nowrap"
             :class="column.class"
           >
             {{ column.label }}
@@ -42,7 +41,7 @@ defineSlots<{
             v-for="column in columns"
             :key="column.key"
             class="px-2 h-10 whitespace-nowrap"
-            :class="column.class"
+            :class="[column.class, column.cellClass]"
           >
             <slot :name="column.key" :row="row" :column="column" :index="index">
               {{ row[column.key] }}
@@ -51,7 +50,7 @@ defineSlots<{
         </tr>
       </tbody>
     </table>
-  </Scrollbar>
+  </div>
 </template>
 
 <style scoped>

@@ -1,63 +1,77 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Badge, Button, Switch } from 'frappe-ui'
+import { computed, ref, watch } from 'vue'
+import { Badge, Button } from 'frappe-ui'
+
+import Collapsable from '@/components/common/Collapsable.vue'
 
 interface Props {
   title: string
   subtitle?: string
   badge?: string | any[]
   loading?: boolean
-  showAutoRefresh?: boolean
-  autoRefresh?: boolean
+  hideChevron?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   subtitle: '',
   badge: '',
   loading: false,
-  showAutoRefresh: false,
-  autoRefresh: false,
+  hideChevron: false,
 })
 
-defineEmits(['refresh', 'update:autoRefresh'])
+const emit = defineEmits(['refresh', 'open'])
 
 const badges = computed(() => [props.badge].flat().filter(Boolean))
+
+/** A panel with no chevron has nothing to click, so it stays open. */
+const opened = ref(props.hideChevron)
+
+// Callers load on first expand, so re-opening must not refetch.
+const wasOpened = ref(props.hideChevron)
+
+watch(opened, (isOpen) => {
+  if (!isOpen || wasOpened.value) return
+  wasOpened.value = true
+  emit('open')
+})
 </script>
 
 <template>
-  <div class="bg-surface-white border rounded-6 border-outline-gray-2">
-    <div class="flex justify-between items-start gap-3 p-4">
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <h3 class="font-semibold">{{ title }}</h3>
+  <div class="bg-surface-white border rounded-6 border-outline-gray-2 fade-in">
+    <Collapsable v-model:opened="opened">
+      <template #header="{ toggle }">
+        <div
+          class="flex flex-wrap items-center gap-x-2 p-4"
+          :class="hideChevron ? '' : 'cursor-pointer'"
+          @click="hideChevron || toggle()"
+        >
+          <h3 class="font-semibold leading-7">{{ title }}</h3>
+
           <Badge v-for="label in badges" :key="label" :label="label" size="sm" />
-        </div>
 
-        <p v-if="subtitle" class="mt-0.5 text-ink-gray-5 text-sm">{{ subtitle }}</p>
-      </div>
+          <div v-if="opened" class="flex items-center gap-3 ml-auto shrink-0" @click.stop>
+            <slot name="actions" />
 
-      <div class="flex items-center gap-3 shrink-0">
-        <slot name="actions" />
-        <label v-if="showAutoRefresh" class="flex items-center gap-2 cursor-pointer">
-          <Switch
-            :model-value="autoRefresh"
-            @update:model-value="$emit('update:autoRefresh', $event)"
+            <Button
+              icon="lucide-refresh-cw"
+              label="Refresh"
+              tooltip="Refresh"
+              :loading="loading"
+              @click="$emit('refresh')"
+            />
+          </div>
+
+          <span
+            v-if="!hideChevron"
+            class="size-4 text-ink-gray-5 transition-transform shrink-0 lucide-chevron-up"
+            :class="[opened ? '' : 'ml-auto rotate-180']"
           />
-          <span class="text-ink-gray-7 text-sm">Auto Refresh</span>
-        </label>
 
-        <Button
-          icon="lucide-refresh-cw"
-          label="Refresh"
-          tooltip="Refresh"
-          :loading="loading"
-          @click="$emit('refresh')"
-        />
-      </div>
-    </div>
+          <p v-if="subtitle" class="mt-1 w-full text-ink-gray-5 text-sm">{{ subtitle }}</p>
+        </div>
+      </template>
 
-    <div class="border-t border-outline-gray-2 overflow-x-auto">
       <slot />
-    </div>
+    </Collapsable>
   </div>
 </template>

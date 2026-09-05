@@ -152,7 +152,7 @@ const siteOptions = computed(() => [
 
 const activityTable = computed(() => ({
   columns: [
-    { key: 'activity', label: 'Activity', class: 'flex items-center gap-3' },
+    { key: 'activity', label: 'Activity', cellClass: 'flex items-center gap-3' },
     ...(props.siteName ? [] : [{ key: 'resource', label: 'Resource' }]),
     { key: 'actor', label: 'Triggered by' },
     { key: 'time', label: 'Date/time', class: 'text-right whitespace-nowrap' },
@@ -235,7 +235,7 @@ onMounted(() => {
     <ErrorMessage :message="'error'" v-else-if="error" class="mt-4" />
 
     <div v-else-if="activities.length" class="flex flex-col flex-1 mt-4 min-h-0 overflow-hidden">
-      <Table v-bind="activityTable">
+      <Table v-bind="activityTable" height="flex-1">
         <template #activity="{ row }">
           <span
             class="place-items-center grid rounded-full size-6 shrink-0"
