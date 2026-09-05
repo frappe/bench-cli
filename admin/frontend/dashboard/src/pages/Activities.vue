@@ -202,7 +202,7 @@ onMounted(() => {
 <template>
   <div
     class="flex flex-col"
-    :class="siteName ? '' : 'p-3 md:p-4 mx-auto max-w-4xl h-[calc(100vh-3rem)]'"
+    :class="siteName ? '' : 'p-3 md:p-4 h-[calc(100vh-3rem)]'"
   >
     <div class="flex flex-wrap items-center gap-3 shrink-0">
       <Combobox
