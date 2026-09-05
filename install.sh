@@ -234,7 +234,6 @@ install_production_packages() {
 
 # NodeSource pins Node 24 on deb/rpm distros; Arch ships a current Node itself.
 install_node() {
-    # If node exists, verify it is version 24
     if command -v node >/dev/null 2>&1; then
         NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
         if [ "$NODE_VERSION" = "24" ]; then
