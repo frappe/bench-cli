@@ -61,14 +61,14 @@ const columns = [
   { label: 'IP address', key: 'ip' },
   { label: 'Last activity', key: 'activity' },
   { label: 'Expires', key: 'exp' },
-  { label: '', key: 'actions', class: 'w-12 text-right' },
+  { label: '', key: 'actions', class: 'w-12' },
 ]
 
 const activityColumns = [
   { label: 'Event', key: 'event', class: 'w-2/5' },
   { label: 'IP address', key: 'ip' },
   { label: 'Time', key: 'time' },
-  { label: '', key: 'actions', class: 'w-12 text-right' },
+  { label: '', key: 'actions', class: 'w-12' },
 ]
 
 // All display formatting happens here, not in the template - rows already hold the

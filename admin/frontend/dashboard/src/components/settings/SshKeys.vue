@@ -11,7 +11,7 @@ import { apiErrorMessage } from '@/api/client'
 const columns = [
   { label: 'Name', key: 'label', class: 'w-1/3' },
   { label: 'Fingerprint', key: 'fingerprint' },
-  { label: '', key: 'actions', class: 'w-12 text-right' },
+  { label: '', key: 'actions', class: 'w-12' },
 ]
 
 const loading = ref(true)

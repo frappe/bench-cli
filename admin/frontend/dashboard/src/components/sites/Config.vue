@@ -18,7 +18,7 @@ const { site, reload } = useSite(props.siteName)
 const columns = [
   { label: 'Key', key: 'key', class: 'w-2/5' },
   { label: 'Value', key: 'value' },
-  { label: '', key: 'actions', class: 'w-12 text-right' },
+  { label: '', key: 'actions', class: 'w-12' },
 ]
 
 const isPassword = (key) => /password|secret|token|key/i.test(key)

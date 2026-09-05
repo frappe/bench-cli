@@ -88,7 +88,7 @@ const listColumns = [
   { label: 'Status', key: 'status' },
   { label: 'Storage', key: 'storage', class: 'text-ink-gray-6 text-sm' },
   { label: 'Apps', key: 'apps', class: 'text-ink-gray-6 text-sm' },
-  { label: '', key: 'actions', class: 'text-right' },
+  { label: '', key: 'actions' },
 ]
 
 const listRows = computed(() =>

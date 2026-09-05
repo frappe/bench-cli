@@ -155,8 +155,8 @@ const activityTable = computed(() => ({
     { key: 'activity', label: 'Activity', cellClass: 'flex items-center gap-3' },
     ...(props.siteName ? [] : [{ key: 'resource', label: 'Resource' }]),
     { key: 'actor', label: 'Triggered by' },
-    { key: 'time', label: 'Date/time', class: 'text-right whitespace-nowrap' },
-    { key: 'actions', label: '', class: 'text-right' },
+    { key: 'time', label: 'Date/time', class: 'whitespace-nowrap' },
+    { key: 'actions', label: '' },
   ],
 
   rows: activities.value

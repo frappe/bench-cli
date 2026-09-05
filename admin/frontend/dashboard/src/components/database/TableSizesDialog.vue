@@ -20,10 +20,10 @@ const open = defineModel('open', { type: Boolean, default: false })
 
 const columns = [
   { label: 'Table', key: 'name', class: 'w-[44%]' },
-  { label: 'Data', key: 'data', class: 'w-[14%] text-right' },
-  { label: 'Index', key: 'index', class: 'w-[14%] text-right' },
-  { label: 'Claimable', key: 'claimable', class: 'w-[14%] text-right' },
-  { label: 'Total', key: 'total', class: 'w-[14%] text-right' },
+  { label: 'Data', key: 'data', class: 'w-[14%]' },
+  { label: 'Index', key: 'index', class: 'w-[14%]' },
+  { label: 'Claimable', key: 'claimable', class: 'w-[14%]' },
+  { label: 'Total', key: 'total', class: 'w-[14%]' },
 ]
 
 const tables = ref([])

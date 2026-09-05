@@ -54,7 +54,7 @@ const columns = [
   { label: 'Manager', key: 'manager', class: 'text-ink-gray-6 text-sm' },
   { label: 'Sites', key: 'sites', class: 'text-ink-gray-6 text-sm' },
   { label: 'Status', key: 'status', class: 'text-center' },
-  { label: '', key: 'actions', class: 'w-12 text-right' },
+  { label: '', key: 'actions', class: 'w-12' },
 ]
 
 const rows = computed(() =>

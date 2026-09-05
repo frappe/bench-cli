@@ -34,12 +34,12 @@ const processColumns = [
   { label: '#', key: 'number', class: 'w-10' },
   { label: 'ID', key: 'id', class: 'w-[10%]' },
   { label: 'State', key: 'state', class: 'w-[10%]' },
-  { label: 'Time', key: 'time', class: 'w-[10%] text-right' },
+  { label: 'Time', key: 'time', class: 'w-[10%]' },
   { label: 'User', key: 'user', class: 'w-[10%]' },
   { label: 'Host', key: 'host', class: 'w-[24%]' },
   { label: 'Command', key: 'command', class: 'w-[10%]' },
   { label: 'Query', key: 'query', class: 'w-[12%]' },
-  { label: '', key: 'actions', class: 'w-20 text-right' },
+  { label: '', key: 'actions', class: 'w-20' },
 ]
 
 const lockColumns = [
@@ -52,8 +52,8 @@ const lockColumns = [
   { label: 'State', key: 'state', class: 'w-[8%]' },
   { label: 'Started', key: 'started', class: 'w-[12%]' },
   { label: 'Query', key: 'query', class: 'w-[15%]' },
-  { label: 'Rows Locked', key: 'rowsLocked', class: 'w-[9%] text-right' },
-  { label: 'Rows Modified', key: 'rowsModified', class: 'w-[10%] text-right' },
+  { label: 'Rows Locked', key: 'rowsLocked', class: 'w-[9%]' },
+  { label: 'Rows Modified', key: 'rowsModified', class: 'w-[10%]' },
 ]
 
 const binlogColumns = [
@@ -61,8 +61,8 @@ const binlogColumns = [
   { label: '', key: 'selected', class: 'w-10' },
   { label: 'File', key: 'name', class: 'w-[44%]' },
   { label: 'Date', key: 'date', class: 'w-[33%]' },
-  { label: 'Size', key: 'size', class: 'w-[23%] text-right' },
-  { label: '', key: 'actions', class: 'w-12 text-right' },
+  { label: 'Size', key: 'size', class: 'w-[23%]' },
+  { label: '', key: 'actions', class: 'w-12' },
 ]
 
 const route = useRoute()

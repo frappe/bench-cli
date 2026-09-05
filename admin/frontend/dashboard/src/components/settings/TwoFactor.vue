@@ -15,7 +15,7 @@ const columns = [
   { label: 'Device', key: 'name', class: 'w-48' },
   { label: 'Added', key: 'confirmed_at', class: 'w-36' },
   { label: 'Last used', key: 'last_used_at', class: 'w-36' },
-  { label: '', key: 'actions', class: 'w-12 text-right' },
+  { label: '', key: 'actions', class: 'w-12' },
 ]
 
 const loading = ref(true)

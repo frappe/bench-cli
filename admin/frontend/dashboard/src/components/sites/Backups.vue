@@ -76,7 +76,7 @@ const columns = [
   { label: 'Public', key: 'public', class: 'tabular-nums' },
   { label: 'Private', key: 'private', class: 'tabular-nums' },
   { label: 'Offsite', key: 'offsite', class: 'text-center' },
-  { label: '', key: 'actions', class: 'w-12 text-right' },
+  { label: '', key: 'actions', class: 'w-12' },
 ]
 
 const fileOf = (set, kind) => set.files?.find((f) => f.kind === kind) ?? null
