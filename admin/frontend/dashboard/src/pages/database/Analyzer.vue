@@ -476,7 +476,7 @@ onMounted(load)
           </div>
         </div>
 
-        <p v-else-if="!size" class="py-6 text-ink-gray-5 text-sm text-center">
+        <p v-else-if="!size" class="py-10 border-t border-outline-gray-2 text-ink-gray-5 text-sm text-center">
           No results to display
         </p>
 
@@ -505,7 +505,7 @@ onMounted(load)
           </template>
         </Table>
 
-        <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
+        <p v-else class="py-10 border-t border-outline-gray-2 text-ink-gray-5 text-sm text-center">No results to display</p>
       </DatabasePanel>
 
       <DatabasePanel
@@ -526,7 +526,7 @@ onMounted(load)
         <ErrorMessage v-if="lockWaitsError" :message="lockWaitsError" class="m-4" />
         <Table v-else-if="lockRows.length" class="px-4 pb-4" :columns="lockColumns" :rows="lockRows" />
 
-        <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
+        <p v-else class="py-10 border-t border-outline-gray-2 text-ink-gray-5 text-sm text-center">No results to display</p>
       </DatabasePanel>
 
       <QueryAnalysisPanel
@@ -556,8 +556,15 @@ onMounted(load)
       >
         <ErrorMessage v-if="binlogsError" :message="binlogsError" class="m-4" />
 
+        <p
+          v-else-if="!binlogRows.length"
+          class="py-10 border-t border-outline-gray-2 text-ink-gray-5 text-sm text-center"
+        >
+          No results to display
+        </p>
+
         <div v-else class="p-4">
-          <Table v-if="binlogRows.length" :columns="binlogColumns" :rows="binlogRows">
+          <Table :columns="binlogColumns" :rows="binlogRows">
             <template #selected="{ row }">
               <Checkbox
                 :modelValue="row.index <= selectedIndex"
@@ -578,8 +585,6 @@ onMounted(load)
               </Tooltip>
             </template>
           </Table>
-
-          <p v-else class="py-6 text-ink-gray-5 text-sm text-center">No results to display</p>
 
           <div v-if="binlogs.length" class="flex flex-wrap justify-between items-center gap-2 mt-3">
             <p class="text-ink-gray-5 text-p-xs">

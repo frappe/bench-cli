@@ -99,7 +99,7 @@ const openQuery = ref('')
 
       <PerformanceSchemaNotice v-if="!enabled" />
 
-      <p v-else-if="!rows.length" class="py-6 text-ink-gray-5 text-sm text-center">
+      <p v-else-if="!rows.length" class="py-10 border-t border-outline-gray-2 text-ink-gray-5 text-sm text-center">
         No results to display
       </p>
 
