@@ -234,7 +234,15 @@ install_production_packages() {
 
 # NodeSource pins Node 24 on deb/rpm distros; Arch ships a current Node itself.
 install_node() {
-    command -v node >/dev/null 2>&1 && return 0
+    # If node exists, verify it is version 24
+    if command -v node >/dev/null 2>&1; then
+        NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+        if [ "$NODE_VERSION" = "24" ]; then
+            return 0
+        else
+            echo "Found Node.js version $NODE_VERSION, but Pilot requires Node 24. Proceeding to update..."
+        fi
+    fi
     # An unknown distro only gets Node when apt is there to install it.
     if [ "$DISTRO" = "unknown" ] && ! command -v apt-get >/dev/null 2>&1; then
         return 0
