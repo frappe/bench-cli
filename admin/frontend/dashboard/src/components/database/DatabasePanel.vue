@@ -71,9 +71,7 @@ watch(opened, (isOpen) => {
         </div>
       </template>
 
-      <div class="overflow-x-auto">
-        <slot />
-      </div>
+      <slot />
     </Collapsable>
   </div>
 </template>

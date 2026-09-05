@@ -104,7 +104,7 @@ const openQuery = ref('')
       </p>
 
       <template v-else>
-        <Table class="px-4" :columns="columns" :rows="rows">
+        <Table class="px-4" height="max-h-96" :columns="columns" :rows="rows">
           <template #database="{ row }">{{ siteLabel(row.database) }}</template>
           <template #percent="{ row }">{{ Number(row.percent).toFixed(1) }}%</template>
           <template #calls="{ row }">{{ formatCount(row.calls) }}</template>
